@@ -165,6 +165,26 @@
                                 </ControlTemplate>
                             </Button.Template>
                         </Button>
+                        <ToggleButton x:Name="btnAnonimizar" Content="Anonimizar" Width="110" Height="35" Margin="0,0,10,0">
+                            <ToggleButton.Template>
+                                <ControlTemplate TargetType="ToggleButton">
+                                    <Border x:Name="border" CornerRadius="4" Background="#E0E0E0">
+                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="border" Property="Background" Value="#D0D0D0"/>
+                                        </Trigger>
+
+                                        <Trigger Property="IsChecked" Value="True">
+                                            <Setter TargetName="border" Property="Background" Value="#4CAF50"/>
+                                            <Setter Property="Foreground" Value="White"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </ToggleButton.Template>
+                        </ToggleButton>
 
                         <Button x:Name="btnSave" Content="Salvar Alterações" Width="120" Height="35" Foreground="White" FontWeight="Bold" Click="btnSave_Click">
                             <Button.Template>

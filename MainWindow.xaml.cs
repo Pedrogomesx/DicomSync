@@ -118,8 +118,10 @@ namespace DicomSync
 
         private async Task LoadImagesAsync(string folderPath)
         {
-            lblStatusImages.Text = "Lendo arquivos DICOM (Carregando na memória)...";
+            lblStatusImages.Text = "A procurar ficheiros...";
             pbImagesLoading.Visibility = Visibility.Visible;
+            pbImagesLoading.Value = 0; // Reset na barra
+            pbImagesLoading.IsIndeterminate = false; // Desativa o modo "infinito"
 
             lstImages.ItemsSource = null;
             lstSeries.ItemsSource = null;
@@ -133,14 +135,27 @@ namespace DicomSync
                 try
                 {
                     string[] files = Directory.GetFiles(folderPath, "*.*", SearchOption.AllDirectories);
+
+                    // 1. Configura o máximo da barra com o total de ficheiros encontrados
+                    Dispatcher.Invoke(() => {
+                        pbImagesLoading.Maximum = files.Length;
+                    });
+
                     bool firstFileProcessed = false;
+                    int processedCount = 0;
 
                     foreach (var file in files)
                     {
+                        processedCount++;
                         try
                         {
-                            var dicomFile = DicomFile.Open(file, FileReadOption.ReadAll);
+                            // 2. Atualiza o progresso e o texto
+                            Dispatcher.Invoke(() => {
+                                pbImagesLoading.Value = processedCount;
+                                lblStatusImages.Text = $"A ler: {processedCount} de {files.Length} ficheiros...";
+                            });
 
+                            var dicomFile = DicomFile.Open(file, FileReadOption.ReadAll);
                             _allDicomFiles.Add(dicomFile);
 
                             string sUID = dicomFile.Dataset.GetSingleValueOrDefault(DicomTag.SeriesInstanceUID, "Unknown");
@@ -159,9 +174,13 @@ namespace DicomSync
                                 firstFileProcessed = true;
                             }
                         }
-                        catch { }
+                        catch
+                        {
+                            // Se não for um DICOM válido, apenas ignoramos e passamos ao próximo
+                        }
                     }
 
+                    // Agrupamento (Fase final)
                     var grouped = _allDicomFiles
                         .GroupBy(d => d.Dataset.GetSingleValueOrDefault(DicomTag.SeriesInstanceUID, "Unknown"))
                         .Select(g => new DicomSeriesViewModel
@@ -183,7 +202,7 @@ namespace DicomSync
 
             lstImages.ItemsSource = listImages;
             lstSeries.ItemsSource = listSeries;
-            lblStatusImages.Text = $"{listImages.Count} imagens encontradas.";
+            lblStatusImages.Text = $"{listImages.Count} imagens carregadas na memória.";
             pbImagesLoading.Visibility = Visibility.Collapsed;
         }
 
@@ -354,6 +373,8 @@ namespace DicomSync
                 lblStatusImages.Text = "Pronto.";
             }
         }
+
+      
 
         private void FillPatientData(DicomDataset dataset)
         {

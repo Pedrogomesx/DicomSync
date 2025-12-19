@@ -51,6 +51,10 @@ namespace DicomSync
             this.Close();
         }
 
+        private void btnAnonymize_Click(object sender, RoutedEvent e)
+        {
+
+        }
         // (Seu método btnSave_Click continua aqui igual ao anterior...)
         private async void btnSave_Click(object sender, RoutedEventArgs e)
         {
@@ -61,66 +65,153 @@ namespace DicomSync
 
             try
             {
-                await Task.Run(() =>
+                if (btnAnonimizar.IsChecked == false)
                 {
-                    // --- PREPARAÇÃO ---
-                    string studyFolder = Path.GetDirectoryName(_filesToEdit[0].File.Name);
-                    string backupFolder = Path.Combine(studyFolder, "BACKUP_ORIGINAL");
+                    await Task.Run(() =>
+                    {
+                        // --- PREPARAÇÃO ---
+                        string studyFolder = Path.GetDirectoryName(_filesToEdit[0].File.Name);
+                        string backupFolder = Path.Combine(studyFolder, "BACKUP_ORIGINAL");
 
-                    if (!Directory.Exists(backupFolder))
-                        Directory.CreateDirectory(backupFolder);
+                        if (!Directory.Exists(backupFolder))
+                            Directory.CreateDirectory(backupFolder);
 
-                    // Configura os máximos das barras
-                    Dispatcher.Invoke(() => {
-                        pbBackup.Maximum = _filesToEdit.Count;
-                        pbBackup.Value = 0;
-                        pbUpdate.Maximum = _filesToEdit.Count;
-                        pbUpdate.Value = 0;
+                        // Configura os máximos das barras
+                        Dispatcher.Invoke(() =>
+                        {
+                            pbBackup.Maximum = _filesToEdit.Count;
+                            pbBackup.Value = 0;
+                            pbUpdate.Maximum = _filesToEdit.Count;
+                            pbUpdate.Value = 0;
+                        });
+
+                        // --- FASE 1: BACKUP ---
+                        int backupCount = 0;
+                        foreach (var file in _filesToEdit)
+                        {
+                            string originalPath = file.File.Name;
+                            string destPath = Path.Combine(backupFolder, Path.GetFileName(originalPath));
+
+                            if (!File.Exists(destPath)) File.Copy(originalPath, destPath);
+
+                            backupCount++;
+                            Dispatcher.Invoke(() => pbBackup.Value = backupCount);
+                        }
+
+                        // --- FASE 2: ATUALIZAÇÃO ---
+                        string pName = "", pID = "", pAcc = "", pBirth = "", pDate = "", pDesc = "";
+                        Dispatcher.Invoke(() =>
+                        {
+                            pName = txtEditName.Text; pID = txtEditID.Text; pAcc = txtEditAccession.Text;
+                            pBirth = txtEditBirth.Text; pDate = txtEditDate.Text; pDesc = txtEditDesc.Text;
+                        });
+
+                        int updateCount = 0;
+                        foreach (var file in _filesToEdit)
+                        {
+                            file.Dataset.AddOrUpdate(DicomTag.PatientName, pName);
+                            file.Dataset.AddOrUpdate(DicomTag.PatientID, pID);
+                            file.Dataset.AddOrUpdate(DicomTag.AccessionNumber, pAcc);
+                            file.Dataset.AddOrUpdate(DicomTag.PatientBirthDate, pBirth);
+                            file.Dataset.AddOrUpdate(DicomTag.StudyDate, pDate);
+                            file.Dataset.AddOrUpdate(DicomTag.StudyDescription, pDesc);
+
+                            file.Save(file.File.Name);
+
+                            updateCount++;
+                            Dispatcher.Invoke(() => pbUpdate.Value = updateCount);
+                        }
                     });
 
-                    // --- FASE 1: BACKUP ---
-                    int backupCount = 0;
-                    foreach (var file in _filesToEdit)
+                    await Task.Delay(500);
+
+                    MessageBox.Show("Estudo atualizado com sucesso!", "Datamaker");
+                    this.DialogResult = true;
+                    this.Close();
+                }
+                else // Modo Anonimizar Ativo (btnAnonimizar.IsChecked == true)
+                {
+                    await Task.Run(() =>
                     {
-                        string originalPath = file.File.Name;
-                        string destPath = Path.Combine(backupFolder, Path.GetFileName(originalPath));
+                        // --- PREPARAÇÃO E BACKUP ---
+                        string studyFolder = Path.GetDirectoryName(_filesToEdit[0].File.Name);
+                        string backupFolder = Path.Combine(studyFolder, "BACKUP_ORIGINAL");
+                        if (!Directory.Exists(backupFolder)) Directory.CreateDirectory(backupFolder);
 
-                        if (!File.Exists(destPath)) File.Copy(originalPath, destPath);
+                        Dispatcher.Invoke(() => {
+                            pbBackup.Maximum = _filesToEdit.Count; pbBackup.Value = 0;
+                            pbUpdate.Maximum = _filesToEdit.Count; pbUpdate.Value = 0;
+                        });
 
-                        backupCount++;
-                        Dispatcher.Invoke(() => pbBackup.Value = backupCount);
-                    }
+                        foreach (var file in _filesToEdit)
+                        {
+                            string destPath = Path.Combine(backupFolder, Path.GetFileName(file.File.Name));
+                            if (!File.Exists(destPath)) File.Copy(file.File.Name, destPath);
+                            Dispatcher.Invoke(() => pbBackup.Value++);
+                        }
 
-                    // --- FASE 2: ATUALIZAÇÃO ---
-                    string pName = "", pID = "", pAcc = "", pBirth = "", pDate = "", pDesc = "";
-                    Dispatcher.Invoke(() => {
-                        pName = txtEditName.Text; pID = txtEditID.Text; pAcc = txtEditAccession.Text;
-                        pBirth = txtEditBirth.Text; pDate = txtEditDate.Text; pDesc = txtEditDesc.Text;
+                        // --- FASE 2: ANONIMIZAÇÃO TOTAL ---
+                        string finalID = "";
+                        string finalAcc = "";
+
+                        Dispatcher.Invoke(() =>
+                        {
+                            // Regra: Se vazio, "anonimo123". Se preenchido, usa o que foi digitado.
+                            finalID = string.IsNullOrWhiteSpace(txtEditID.Text) ? "anonimo123" : txtEditID.Text;
+                            finalAcc = string.IsNullOrWhiteSpace(txtEditAccession.Text) ? "anonimo123" : txtEditAccession.Text;
+                        });
+
+                        int updateCount = 0;
+                        foreach (var file in _filesToEdit)
+                        {
+                            var dataset = file.Dataset;
+
+                            // 1. Identificação do Paciente (Atualizando com os novos valores ou limpando)
+                            dataset.AddOrUpdate(DicomTag.PatientName, "ANONIMO");
+                            dataset.AddOrUpdate(DicomTag.PatientID, finalID);
+                            dataset.AddOrUpdate(DicomTag.AccessionNumber, finalAcc);
+
+                            // Removendo as outras tags de identificação conforme a tua lista
+                            dataset.Remove(DicomTag.PatientBirthDate);
+                            dataset.Remove(DicomTag.PatientSex);
+                            dataset.Remove(DicomTag.PatientAddress);
+                            dataset.Remove(DicomTag.PatientTelephoneNumbers);
+                            dataset.Remove(DicomTag.PatientBirthTime);
+                            dataset.Remove(DicomTag.PatientAge);
+
+                            // 2. Identificadores do Estudo (Removendo datas e horas)
+                            //dataset.Remove(DicomTag.StudyDate);
+                            //dataset.Remove(DicomTag.SeriesDate);
+                            //dataset.Remove(DicomTag.AcquisitionDate);
+                            //dataset.Remove(DicomTag.ContentDate);
+                            //dataset.Remove(DicomTag.StudyTime);
+                            //dataset.Remove(DicomTag.SeriesTime);
+
+                            // 3. Documentos e Instituição
+                            dataset.Remove(DicomTag.InstitutionName);
+                            dataset.Remove(DicomTag.InstitutionAddress);
+                            dataset.Remove(DicomTag.ReferringPhysicianName);
+                            dataset.Remove(DicomTag.InstitutionalDepartmentName);
+                            dataset.Remove(DicomTag.OperatorsName);
+                            dataset.Remove(DicomTag.PhysiciansOfRecord);
+
+                            // Tag de segurança para saber que foi processado
+                            dataset.AddOrUpdate(DicomTag.StudyDescription, "ESTUDO_ANONIMIZADO");
+
+                            // Guardar as alterações no ficheiro
+                            file.Save(file.File.Name);
+
+                            updateCount++;
+                            Dispatcher.Invoke(() => pbUpdate.Value = updateCount);
+                        }
                     });
 
-                    int updateCount = 0;
-                    foreach (var file in _filesToEdit)
-                    {
-                        file.Dataset.AddOrUpdate(DicomTag.PatientName, pName);
-                        file.Dataset.AddOrUpdate(DicomTag.PatientID, pID);
-                        file.Dataset.AddOrUpdate(DicomTag.AccessionNumber, pAcc);
-                        file.Dataset.AddOrUpdate(DicomTag.PatientBirthDate, pBirth);
-                        file.Dataset.AddOrUpdate(DicomTag.StudyDate, pDate);
-                        file.Dataset.AddOrUpdate(DicomTag.StudyDescription, pDesc);
-
-                        file.Save(file.File.Name);
-
-                        updateCount++;
-                        Dispatcher.Invoke(() => pbUpdate.Value = updateCount);
-                    }
-                });
-
-                await Task.Delay(500);
-
-                MessageBox.Show("Estudo atualizado com sucesso!", "Datamaker");
-                this.DialogResult = true;
-                this.Close();
+                    MessageBox.Show("Anonimização concluída com sucesso!", "DicomSync");
+                    this.DialogResult = true;
+                    this.Close();
+                }
             }
+
             catch (Exception ex)
             {
                 MessageBox.Show($"Erro: {ex.Message}");
@@ -129,6 +220,7 @@ namespace DicomSync
                 btnCancel.IsEnabled = true;
             }
         }
+    
 
         private void btnCancel_Click(object sender, RoutedEventArgs e)
         {
