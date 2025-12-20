@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="DicomSync - Editor e Envio" 
-        Height="850" Width="950"
+        Height="908" Width="950"
         
         WindowState="Normal" 
         WindowStartupLocation="CenterScreen"
@@ -221,7 +221,7 @@
                     </Border>
                 </StackPanel>
 
-                <Border Grid.Row="1" Style="{StaticResource CardStyle}" Margin="20,0,20,20" Padding="0">
+                <Border Style="{StaticResource CardStyle}" Margin="20,311,20,20" Padding="0" Grid.RowSpan="2">
                     <Grid Margin="15">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
@@ -280,11 +280,12 @@
                             </TabItem>
 
                             <TabItem Header=" 📷 Imagens " FontSize="14">
-                                <Grid Background="#F9F9F9" Margin="0,10,0,0">
+                                <Grid x:Name="___Sem_Nome_" Background="#F9F9F9" Margin="0,10,0,0">
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto"/>
                                         <RowDefinition Height="Auto"/>
                                         <RowDefinition Height="*"/>
+                                        <RowDefinition Height="Auto"/>
                                         <RowDefinition Height="Auto"/>
                                     </Grid.RowDefinitions>
 
@@ -298,33 +299,21 @@
                                                     <ColumnDefinition Width="Auto"/>
                                                 </Grid.ColumnDefinitions>
                                                 <TextBox x:Name="txtFolderPath" Grid.Column="0" IsReadOnly="True" Text="Nenhuma pasta selecionada" VerticalContentAlignment="Center" Background="#F5F5F5" Foreground="#555" Margin="0,0,10,0"/>
-                                                <Button x:Name="btnSelectFolder" Grid.Column="1" Content="📂 Importar Estudo" Click="btnSelectFolder_Click" Width="140" Height="35" Background="#9C27B0" Foreground="White" FontWeight="Bold" Margin="0,0,10,0" Cursor="Hand">
-                                                    <Button.Resources>
-                                                        <Style TargetType="Border">
-                                                            <Setter Property="CornerRadius" Value="4"/>
-                                                        </Style>
-                                                    </Button.Resources>
-                                                </Button>
-                                                <Button x:Name="btnLoadImages" Grid.Column="2" Content="🔍 Localizar" Click="btnLoadImages_Click" Width="100" Height="35" Background="#7B1FA2" Foreground="White" FontWeight="Bold" IsEnabled="False" Cursor="Hand">
-                                                    <Button.Resources>
-                                                        <Style TargetType="Border">
-                                                            <Setter Property="CornerRadius" Value="4"/>
-                                                        </Style>
-                                                    </Button.Resources>
-                                                </Button>
+                                                <Button x:Name="btnSelectFolder" Grid.Column="1" Content="📂 Importar Estudo" Click="btnSelectFolder_Click" Width="140" Height="35" Background="#9C27B0" Foreground="White" FontWeight="Bold" Margin="0,0,10,0" Cursor="Hand"/>
+                                                <Button x:Name="btnLoadImages" Grid.Column="2" Content="🔍 Localizar" Click="btnLoadImages_Click" Width="100" Height="35" Background="#7B1FA2" Foreground="White" FontWeight="Bold" IsEnabled="False" Cursor="Hand"/>
                                             </Grid>
                                         </StackPanel>
                                     </Border>
 
                                     <Grid Grid.Row="1" Margin="15,0,15,5">
                                         <TextBlock x:Name="lblStatusImages" Text="Aguardando ação..." Foreground="Gray" HorizontalAlignment="Left" VerticalAlignment="Center"/>
-                                        <ProgressBar x:Name="pbImagesLoading" Width="165" HorizontalAlignment="Right" IsIndeterminate="True" Visibility="Collapsed" Margin="0,9,0,0"/>
+                                        <ProgressBar x:Name="pbImagesLoading" Width="412" Height="15" HorizontalAlignment="Right" VerticalAlignment="Center" Minimum="0" Maximum="100" Value="0" Visibility="Collapsed"/>
                                     </Grid>
 
-                                    <TabControl Grid.Row="2" Margin="10,10,10,10" Background="Transparent" BorderThickness="0">
+                                    <TabControl Grid.Row="2" Margin="10,0,10,10" Background="Transparent" BorderThickness="0">
                                         <TabItem Header="Todas as Imagens">
                                             <Border Background="White" BorderBrush="#EEEEEE" BorderThickness="1" CornerRadius="4">
-                                                <ListBox x:Name="lstImages" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Auto" SelectionMode="Extended">
+                                                <ListBox x:Name="lstImages" BorderThickness="0" SelectionMode="Extended">
                                                     <ListBox.ItemTemplate>
                                                         <DataTemplate>
                                                             <StackPanel Orientation="Horizontal" Margin="2">
@@ -338,12 +327,12 @@
                                         </TabItem>
                                         <TabItem Header="Agrupar por Séries">
                                             <Border Background="White" BorderBrush="#EEEEEE" BorderThickness="1" CornerRadius="4">
-                                                <ListBox x:Name="lstSeries" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Auto" SelectionMode="Extended">
+                                                <ListBox x:Name="lstSeries" BorderThickness="0" SelectionMode="Extended">
                                                     <ListBox.ItemTemplate>
                                                         <DataTemplate>
                                                             <StackPanel Margin="5">
                                                                 <StackPanel Orientation="Horizontal">
-                                                                    <CheckBox IsChecked="{Binding IsSelected}" VerticalAlignment="Center" Margin="0,0,8,0" FontWeight="Bold"/>
+                                                                    <CheckBox IsChecked="{Binding IsSelected}" VerticalAlignment="Center" Margin="0,0,8,0"/>
                                                                     <TextBlock Text="{Binding SeriesDescription}" FontWeight="Bold" Foreground="#007ACC"/>
                                                                     <TextBlock Text=" | " Foreground="Gray"/>
                                                                     <TextBlock Text="{Binding SeriesUID}" FontSize="10" Foreground="Gray" VerticalAlignment="Center"/>
@@ -357,14 +346,60 @@
                                         </TabItem>
                                     </TabControl>
 
-                                    <Button Grid.Row="3" x:Name="btnSend" Content="ENVIAR SELECIONADOS PARA O PACS" Style="{StaticResource PrimaryButton}" Click="btnSend_Click" Margin="10,0,10,10"/>
+                                    <UniformGrid Grid.Row="3" Columns="2" Margin="10,0,10,10">
+                                        <Border Background="#E8F5E9" BorderBrush="#4CAF50" BorderThickness="1" CornerRadius="6" Padding="10,8" Margin="5,0">
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                                <TextBlock Text="✅ SUCESSO: " Foreground="#2E7D32" FontWeight="Bold" FontSize="14"/>
+                                                <TextBlock x:Name="lblSucessoCount" Text="0" Foreground="#2E7D32" FontWeight="Bold" FontSize="14"/>
+                                                <TextBlock Text=" / " Foreground="#2E7D32" FontWeight="Bold" FontSize="14"/>
+                                                <TextBlock x:Name="lblTotalSucesso" Text="0" Foreground="#2E7D32" FontWeight="Bold" FontSize="14"/>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <Border Background="#FFEBEE" BorderBrush="#F44336" BorderThickness="1" CornerRadius="6" Padding="10,8" Margin="5,0">
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                                <TextBlock Text="❌ FALHA: " Foreground="#C62828" FontWeight="Bold" FontSize="14"/>
+                                                <TextBlock x:Name="lblErroCount" Text="0" Foreground="#C62828" FontWeight="Bold" FontSize="14"/>
+                                                <TextBlock Text=" / " Foreground="#C62828" FontWeight="Bold" FontSize="14"/>
+                                                <TextBlock x:Name="lblTotalErro" Text="0" Foreground="#C62828" FontWeight="Bold" FontSize="14"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </UniformGrid>
+
+                                    <Button Grid.Row="4" x:Name="btnSend" Content="ENVIAR SELECIONADOS PARA O PACS" Style="{StaticResource PrimaryButton}" Click="btnSend_Click" Margin="10,0,10,15"/>
                                 </Grid>
                             </TabItem>
+                            <TabItem Header="⚠️ Logs de Erro">
+                                <Border Background="White" BorderBrush="#EEEEEE" BorderThickness="1" CornerRadius="4">
+                                    <ListBox x:Name="lstErrorLogs" BorderThickness="0" HorizontalContentAlignment="Stretch">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Background="#FFF5F5" BorderBrush="#FFCDD2" BorderThickness="1" CornerRadius="4" Padding="10" Margin="0,0,0,5">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                        </Grid.ColumnDefinitions>
 
-                            <TabItem Header=" 📝 Logs " FontSize="14">
-                                <Grid Background="#F9F9F9">
-                                    <TextBlock Text="Logs em breve..." VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="Gray"/>
-                                </Grid>
+                                                        <TextBlock Text="⚠️" FontSize="20" Margin="0,0,10,0" VerticalAlignment="Center"/>
+
+                                                        <StackPanel Grid.Column="1">
+                                                            <TextBlock Text="{Binding Description}" FontWeight="Bold" Foreground="#B71C1C" FontSize="13"/>
+                                                            <TextBlock Text="{Binding ProbableCause}" Foreground="#333" FontSize="12" Margin="0,2,0,5" TextWrapping="Wrap"/>
+
+                                                            <StackPanel Orientation="Horizontal">
+                                                                <TextBlock Text="ID Técnico: " FontSize="10" Foreground="Gray"/>
+                                                                <TextBlock Text="{Binding ErrorCode}" FontSize="10" Foreground="Gray" Margin="0,0,10,0"/>
+                                                                <TextBlock Text="UID: " FontSize="10" Foreground="Gray"/>
+                                                                <TextBlock Text="{Binding InstanceUID}" FontSize="10" Foreground="Gray" TextTrimming="CharacterEllipsis"/>
+                                                            </StackPanel>
+                                                        </StackPanel>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                </Border>
                             </TabItem>
                         </TabControl>
                     </Grid>

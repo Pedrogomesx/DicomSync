@@ -9,13 +9,14 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input; // NECESSÁRIO
+using System.Windows.Input;
 
 namespace DicomSync
 {
     public partial class MainWindow : Window
     {
         private List<DicomFile> _allDicomFiles = new List<DicomFile>();
+        private List<DicomErrorLog> _errorLogs = new List<DicomErrorLog>();
 
         public MainWindow()
         {
@@ -28,7 +29,6 @@ namespace DicomSync
         {
             if (e.ChangedButton == MouseButton.Left)
             {
-                // Se clicar duas vezes na barra, maximiza
                 if (e.ClickCount == 2)
                 {
                     btnMaximize_Click(sender, e);
@@ -50,18 +50,16 @@ namespace DicomSync
             if (this.WindowState == WindowState.Normal)
             {
                 this.WindowState = WindowState.Maximized;
-                // Remove bordas arredondadas e margem ao maximizar para preencher a tela
                 MainBorder.CornerRadius = new CornerRadius(0);
                 MainBorder.Margin = new Thickness(0);
-                btnMaximize.Content = "❐"; // Ícone de Restaurar
+                btnMaximize.Content = "❐";
             }
             else
             {
                 this.WindowState = WindowState.Normal;
-                // Restaura bordas arredondadas e sombra
                 MainBorder.CornerRadius = new CornerRadius(8);
                 MainBorder.Margin = new Thickness(10);
-                btnMaximize.Content = "⬜"; // Ícone de Maximizar
+                btnMaximize.Content = "⬜";
             }
         }
 
@@ -70,7 +68,7 @@ namespace DicomSync
             Application.Current.Shutdown();
         }
 
-        // --- (A PARTIR DAQUI, SEU CÓDIGO ORIGINAL SEGUE NORMAL) ---
+        // --- VIEW MODELS ---
 
         public class DicomItemViewModel
         {
@@ -88,6 +86,16 @@ namespace DicomSync
             public int ImageCount { get; set; }
             public string ImageCountInfo => $"{ImageCount} imagens nesta série";
         }
+        public class DicomErrorLog
+        {
+            public string InstanceUID { get; set; }
+            public string ErrorCode { get; set; }     // Ex: 0110H
+            public string Description { get; set; }   // Ex: Out of Resources
+            public string ProbableCause { get; set; } // Ex: Disco do PACS cheio
+            public string Time { get; set; }
+        }
+
+        // --- GERENCIAMENTO DE ARQUIVOS ---
 
         private void btnSelectFolder_Click(object sender, RoutedEventArgs e)
         {
@@ -111,17 +119,18 @@ namespace DicomSync
 
         private async void btnLoadImages_Click(object sender, RoutedEventArgs e)
         {
-            string path = txtFolderPath.Text;
-            if (string.IsNullOrEmpty(path) || path.Contains("Nenhuma")) return;
-            await LoadImagesAsync(path);
+            if (!string.IsNullOrEmpty(txtFolderPath.Text))
+            {
+                await LoadImagesAsync(txtFolderPath.Text);
+            }
         }
 
         private async Task LoadImagesAsync(string folderPath)
         {
             lblStatusImages.Text = "A procurar ficheiros...";
             pbImagesLoading.Visibility = Visibility.Visible;
-            pbImagesLoading.Value = 0; // Reset na barra
-            pbImagesLoading.IsIndeterminate = false; // Desativa o modo "infinito"
+            pbImagesLoading.Value = 0;
+            pbImagesLoading.IsIndeterminate = false;
 
             lstImages.ItemsSource = null;
             lstSeries.ItemsSource = null;
@@ -136,7 +145,6 @@ namespace DicomSync
                 {
                     string[] files = Directory.GetFiles(folderPath, "*.*", SearchOption.AllDirectories);
 
-                    // 1. Configura o máximo da barra com o total de ficheiros encontrados
                     Dispatcher.Invoke(() => {
                         pbImagesLoading.Maximum = files.Length;
                     });
@@ -149,7 +157,6 @@ namespace DicomSync
                         processedCount++;
                         try
                         {
-                            // 2. Atualiza o progresso e o texto
                             Dispatcher.Invoke(() => {
                                 pbImagesLoading.Value = processedCount;
                                 lblStatusImages.Text = $"A ler: {processedCount} de {files.Length} ficheiros...";
@@ -174,13 +181,9 @@ namespace DicomSync
                                 firstFileProcessed = true;
                             }
                         }
-                        catch
-                        {
-                            // Se não for um DICOM válido, apenas ignoramos e passamos ao próximo
-                        }
+                        catch { }
                     }
 
-                    // Agrupamento (Fase final)
                     var grouped = _allDicomFiles
                         .GroupBy(d => d.Dataset.GetSingleValueOrDefault(DicomTag.SeriesInstanceUID, "Unknown"))
                         .Select(g => new DicomSeriesViewModel
@@ -200,30 +203,22 @@ namespace DicomSync
                 }
             });
 
+            // --- ATUALIZAÇÃO DOS CONTADORES APÓS LOCALIZAR ---
             lstImages.ItemsSource = listImages;
             lstSeries.ItemsSource = listSeries;
+
+            // Aqui está o segredo:
+            lblTotalSucesso.Text = listImages.Count.ToString();
+            lblTotalErro.Text = listImages.Count.ToString();
+            lblSucessoCount.Text = "0";
+            lblErroCount.Text = "0";
+
             lblStatusImages.Text = $"{listImages.Count} imagens carregadas na memória.";
             pbImagesLoading.Visibility = Visibility.Collapsed;
         }
 
-        private void btnEditData_Click(object sender, RoutedEventArgs e)
-        {
-            if (_allDicomFiles.Count == 0)
-            {
-                MessageBox.Show("Nenhum estudo carregado.");
-                return;
-            }
+        // --- OPERAÇÕES DICOM (ECHO E SEND) ---
 
-            EditDataWindow editWindow = new EditDataWindow(_allDicomFiles);
-
-            if (editWindow.ShowDialog() == true)
-            {
-                if (_allDicomFiles.Count > 0)
-                {
-                    FillPatientData(_allDicomFiles[0].Dataset);
-                }
-            }
-        }
         private async void btnEcho_Click(object sender, RoutedEventArgs e)
         {
             string ip = txtIpRemote.Text;
@@ -241,31 +236,26 @@ namespace DicomSync
 
             try
             {
-                // Cria o cliente usando a Factory (Compatível com versões novas)
                 var client = DicomClientFactory.Create(ip, porta, false, aeLocal, aeRemote);
-
-                // Adiciona o pedido de ECHO
                 var echoReq = new DicomCEchoRequest();
 
-                // Evento para capturar a resposta
                 bool success = false;
                 echoReq.OnResponseReceived += (req, response) =>
                 {
-                    if (response.Status == DicomStatus.Success)
-                        success = true;
+                    if (response.Status == DicomStatus.Success) success = true;
                 };
 
                 await client.AddRequestAsync(echoReq);
                 await client.SendAsync();
 
                 if (success)
-                    MessageBox.Show($"Conexão com {aeRemote} ({ip}:{porta}) estabelecida com SUCESSO!", "Teste de Conexão", MessageBoxButton.OK, MessageBoxImage.Information);
+                    MessageBox.Show($"Conexão estabelecida com SUCESSO!", "Teste", MessageBoxButton.OK, MessageBoxImage.Information);
                 else
                     MessageBox.Show("O servidor respondeu, mas retornou um erro.", "Aviso");
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Falha na conexão:\n{ex.Message}\n\nVerifique IP, Porta e se o PACS permite seu AE Title.", "Erro de Conexão", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"Falha: {ex.Message}", "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
             {
@@ -273,12 +263,13 @@ namespace DicomSync
                 this.Cursor = Cursors.Arrow;
             }
         }
+
         private async void btnSend_Click(object sender, RoutedEventArgs e)
         {
             // 1. Validações Iniciais
             if (_allDicomFiles.Count == 0)
             {
-                MessageBox.Show("Nenhum estudo carregado para enviar.");
+                MessageBox.Show("Nenhum estudo carregado.");
                 return;
             }
 
@@ -292,12 +283,12 @@ namespace DicomSync
                 return;
             }
 
-            // 2. Filtra quais arquivos enviar
+            // 2. Identificar ficheiros selecionados
             List<DicomFile> filesToSend = new List<DicomFile>();
             var seriesSource = lstSeries.ItemsSource as List<DicomSeriesViewModel>;
             var imagesSource = lstImages.ItemsSource as List<DicomItemViewModel>;
 
-            if (lstSeries.IsVisible && seriesSource != null && seriesSource.Any(s => s.IsSelected))
+            if (seriesSource != null && seriesSource.Any(s => s.IsSelected))
             {
                 var selectedUIDs = seriesSource.Where(s => s.IsSelected).Select(s => s.SeriesUID).ToList();
                 filesToSend = _allDicomFiles.Where(d => selectedUIDs.Contains(d.Dataset.GetSingleValueOrDefault(DicomTag.SeriesInstanceUID, ""))).ToList();
@@ -310,61 +301,91 @@ namespace DicomSync
 
             if (filesToSend.Count == 0)
             {
-                MessageBox.Show("Selecione ao menos uma imagem ou série.");
+                MessageBox.Show("Selecione ao menos uma imagem ou série para enviar.");
                 return;
             }
 
-            // 3. Preparação Visual
+            // --- PREPARAÇÃO PARA O ENVIO E LOGS ---
             btnSend.IsEnabled = false;
+            _errorLogs.Clear();
+            lstErrorLogs.ItemsSource = null;
+
+            // Inicializa contadores visuais
+            lblSucessoCount.Text = "0";
+            lblErroCount.Text = "0";
+            lblTotalSucesso.Text = filesToSend.Count.ToString();
+            lblTotalErro.Text = filesToSend.Count.ToString();
+
             pbImagesLoading.Visibility = Visibility.Visible;
-            pbImagesLoading.IsIndeterminate = false;
-            pbImagesLoading.Minimum = 0;
             pbImagesLoading.Maximum = filesToSend.Count;
             pbImagesLoading.Value = 0;
-            lblStatusImages.Text = $"Iniciando envio de {filesToSend.Count} imagens...";
 
             int successCount = 0;
             int errorCount = 0;
 
             try
             {
-                // Cria o cliente DICOM usando a Factory
                 var client = DicomClientFactory.Create(ip, porta, false, aeLocal, aeRemote);
-
-                // --- CORREÇÃO: Usamos apenas o timeout de associação que ainda existe ---
                 client.ClientOptions.AssociationRequestTimeoutInMs = 60000;
-                // A linha 'DimseTimeoutInMs' foi removida pois não existe mais na versão 5.0+
 
                 foreach (var dicomFile in filesToSend)
                 {
                     var request = new DicomCStoreRequest(dicomFile);
 
+                    // CAPTURA DE RESPOSTA (Sem MessageBox aqui dentro!)
                     request.OnResponseReceived += (req, response) =>
                     {
                         if (response.Status == DicomStatus.Success)
+                        {
                             successCount++;
+                        }
                         else
+                        {
                             errorCount++;
+                            var status = response.Status;
 
+                            var errorEntry = new DicomErrorLog
+                            {
+                                InstanceUID = dicomFile.Dataset.GetSingleValueOrDefault(DicomTag.SOPInstanceUID, "N/A"),
+                                ErrorCode = $"0x{status.Code:X4}H",
+                                Description = status.ToString(),
+                                ProbableCause = GetFriendlyError(status, dicomFile.Dataset),
+                                Time = DateTime.Now.ToString("HH:mm:ss")
+                            };
+
+                            Dispatcher.Invoke(() =>
+                            {
+                                _errorLogs.Insert(0, errorEntry);
+                                lstErrorLogs.ItemsSource = null;
+                                lstErrorLogs.ItemsSource = _errorLogs;
+                            });
+                        }
+
+                        // Atualiza contadores na tela em tempo real
                         Dispatcher.Invoke(() =>
                         {
+                            lblSucessoCount.Text = successCount.ToString();
+                            lblErroCount.Text = errorCount.ToString();
                             pbImagesLoading.Value = successCount + errorCount;
-                            lblStatusImages.Text = $"Enviando... {successCount + errorCount}/{filesToSend.Count}";
+                            lblStatusImages.Text = $"Enviando: {successCount + errorCount}/{filesToSend.Count}";
                         });
                     };
 
                     await client.AddRequestAsync(request);
                 }
 
+                // DISPARA O ENVIO DE TODOS OS ARQUIVOS
                 await client.SendAsync();
 
-                string msg = $"Envio Finalizado!\n\nSucesso: {successCount}\nFalhas: {errorCount}";
-                MessageBoxImage icon = errorCount == 0 ? MessageBoxImage.Information : MessageBoxImage.Warning;
-                MessageBox.Show(msg, "Relatório", MessageBoxButton.OK, icon);
+                // APENAS UMA CAIXA DE MENSAGEM NO FINAL
+                string resultadoFinal = $"Envio concluído!\n\nSucessos: {successCount}\nFalhas: {errorCount}";
+                MessageBox.Show(resultadoFinal, "Relatório de Envio", MessageBoxButton.OK,
+                                errorCount > 0 ? MessageBoxImage.Warning : MessageBoxImage.Information);
+
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Erro crítico no envio: {ex.Message}", "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"Erro crítico na conexão: {ex.Message}", "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
             {
@@ -373,8 +394,18 @@ namespace DicomSync
                 lblStatusImages.Text = "Pronto.";
             }
         }
+        // --- AUXILIARES ---
 
-      
+        private void btnEditData_Click(object sender, RoutedEventArgs e)
+        {
+            if (_allDicomFiles.Count == 0) return;
+
+            EditDataWindow editWindow = new EditDataWindow(_allDicomFiles);
+            if (editWindow.ShowDialog() == true)
+            {
+                FillPatientData(_allDicomFiles[0].Dataset);
+            }
+        }
 
         private void FillPatientData(DicomDataset dataset)
         {
@@ -384,6 +415,36 @@ namespace DicomSync
             txtBirthDate.Text = dataset.GetSingleValueOrDefault(DicomTag.PatientBirthDate, string.Empty);
             txtStudyDate.Text = dataset.GetSingleValueOrDefault(DicomTag.StudyDate, string.Empty);
             txtStudyDescription.Text = dataset.GetSingleValueOrDefault(DicomTag.StudyDescription, string.Empty);
+        }
+        private string GetFriendlyError(DicomStatus status, DicomDataset dataset = null)
+        {
+            ushort code = status.Code;
+
+            // 1. TRATAMENTO DE TAG DICOM VAZIA / NÃO ENCONTRADA
+            // Códigos 0106H (Invalid Attribute Value) ou 0120H (Missing Attribute)
+            if (code == 0x0106 || code == 0x0120 || code == 0x0116)
+            {
+                // Tentamos identificar qual tag causou o problema se o PACS informar
+                string tagInfo = !string.IsNullOrEmpty(status.ErrorComment) ? status.ErrorComment : "Tag obrigatória";
+                return $"Erro de Dados: A {tagInfo} está vazia ou ausente no dataset do arquivo.";
+            }
+
+            // 2. TRANSFER SYNTAX NÃO SUPORTADA
+            // Código 0122H (SOP Class Not Supported) ou CxxxH (Unable to Process)
+            if (code == 0x0122 || (code >= 0xC000 && code <= 0xCFFF))
+            {
+                return "Incompatibilidade: A Transfer Syntax (compressão) deste arquivo não é suportada pelo PACS de destino.";
+            }
+
+            // 3. OPERAÇÃO ABORTADA
+            // No fo-dicom, o status pode vir como cancelado ou erro de processamento específico
+            if (code == 0xFE00 || code == 0x0110)
+            {
+                return "Operação Abortada: O processo foi interrompido pelo servidor ou pelo usuário.";
+            }
+
+            // Outros erros são simplificados para uma mensagem genérica ou ignorados conforme solicitado
+            return "Falha na operação DICOM. Verifique os logs do servidor.";
         }
     }
 }
