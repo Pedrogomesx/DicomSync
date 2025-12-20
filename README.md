@@ -10,7 +10,11 @@
 
 ## 📸 Screenshots
 
-*(Coloque aqui uma imagem da tela principal do software)*
+<img width="930" height="1107" alt="image" src="https://github.com/user-attachments/assets/3752a730-8ccb-4980-85be-91f32f496ac6" /><img width="930" height="1107" alt="image" src="https://github.com/user-attachments/assets/ef6f2b9b-ed55-425b-8a64-2a20cf2da188" /><img width="950" height="1126" alt="image" src="https://github.com/user-attachments/assets/94a7dd8c-f951-4135-94c6-ed3a057a4c63" /><img width="950" height="1126" alt="image" src="https://github.com/user-attachments/assets/2ccb3abe-bef9-4bc4-8b6a-2b91f7374c82" />
+
+
+
+
 ![Interface Principal](https://via.placeholder.com/800x500?text=Screenshot+DicomSync)
 
 ---
@@ -25,6 +29,7 @@
 ### 2. ✏️ DATAMAKER (Edição Inteligente)
 Ferramenta poderosa para correção ou alteração de dados do paciente (Tags DICOM).
 * **Edição em Lote:** Altera todos os arquivos do estudo de uma vez.
+* **Anonimizar Estudo:** Agora é possível você descaracterizar um estudo de forma simples.
 * **Backup Automático:** Antes de qualquer alteração, o sistema cria automaticamente uma pasta `BACKUP_ORIGINAL` com os arquivos intactos.
 * **Feedback Visual:** Barras de progresso duplas (Backup e Atualização) para acompanhar o processo.
 
@@ -89,7 +94,7 @@ O projeto está em evolução constante. Abaixo estão as funcionalidades planej
 ### Passos
 1.  Clone este repositório:
     ```bash
-    git clone [https://github.com/SEU-USUARIO/DicomSync.git](https://github.com/SEU-USUARIO/DicomSync.git)
+    git clone [https://github.com/Pedrogomesx/DicomSync](https://github.com/Pedrogomesx/DicomSync).git)
     ```
 2.  Abra a solução no Visual Studio.
 3.  Restaure os pacotes NuGet.
