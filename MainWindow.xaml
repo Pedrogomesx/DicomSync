@@ -267,9 +267,9 @@
                                                 </StackPanel>
                                                 <StackPanel Grid.Column="2">
                                                     <Label Content="Data de Nascimento"/>
-                                                    <TextBox x:Name="txtBirthDate" IsReadOnly="True" Background="#F5F5F5" Foreground="#333"/>
+                                                    <TextBox x:Name="txtBirthDate" TextChanged="DateTextBox_TextChanged" MaxLength="10" IsReadOnly="True" Background="#F5F5F5" Foreground="#333"/>
                                                     <Label Content="Data do Estudo"/>
-                                                    <TextBox x:Name="txtStudyDate" IsReadOnly="True" Background="#F5F5F5" Foreground="#333"/>
+                                                    <TextBox x:Name="txtStudyDate" IsReadOnly="True" TextChanged="DateTextBox_TextChanged" MaxLength="10" Background="#F5F5F5" Foreground="#333"/>
                                                     <Label Content="Descrição do Estudo"/>
                                                     <TextBox x:Name="txtStudyDescription" IsReadOnly="True" Background="#F5F5F5" Foreground="#333"/>
                                                 </StackPanel>

@@ -119,11 +119,11 @@
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0">
                             <Label Content="Data Nasc. (YYYYMMDD)"/>
-                            <TextBox x:Name="txtEditBirth" Height="30"/>
+                            <TextBox x:Name="txtEditBirth" TextChanged="DateTextBox_TextChanged" MaxLength="10" Height="30"/>
                         </StackPanel>
                         <StackPanel Grid.Column="2">
                             <Label Content="Data Estudo (YYYYMMDD)"/>
-                            <TextBox x:Name="txtEditDate" Height="30"/>
+                            <TextBox x:Name="txtEditDate" TextChanged="DateTextBox_TextChanged" MaxLength="10" Height="30"/>
                         </StackPanel>
                     </Grid>
 

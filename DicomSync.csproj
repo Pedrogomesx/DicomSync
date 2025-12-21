@@ -9,13 +9,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="Services\**" />
-    <EmbeddedResource Remove="Services\**" />
-    <None Remove="Services\**" />
-    <Page Remove="Services\**" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="fo-dicom" Version="5.2.5" />
     <PackageReference Include="fo-dicom.Imaging.Desktop" Version="5.2.5" />
   </ItemGroup>

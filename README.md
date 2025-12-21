@@ -1,123 +1,72 @@
 # 🏥 DicomSync - Editor e Envio DICOM
 
-![Status do Projeto](https://img.shields.io/badge/Status-Em_Desenvolvimento-yellow)
+![Status do Projeto](https://img.shields.io/badge/Status-Estável-green)
 ![.NET](https://img.shields.io/badge/.NET-WPF-purple)
-![License](https://img.shields.io/badge/License-MIT-blue)
+![Arquitetura](https://img.shields.io/badge/Arquitetura-MVVM--Clean-blue)
 
-**DicomSync** é uma aplicação desktop desenvolvida em **WPF (C#)** com interface moderna e minimalista (estilo Aero/Flat). O objetivo da ferramenta é facilitar a gestão, edição (correção de dados) e envio de imagens médicas (DICOM) para servidores PACS.
+**DicomSync** é uma ferramenta robusta para gestão, edição técnica e sincronização de exames DICOM. Desenvolvida com foco em performance e confiabilidade, a aplicação isola a complexidade do protocolo DICOM em uma arquitetura moderna, facilitando a correção de metadados e o envio para servidores PACS.
 
 ---
 
 ## 📸 Screenshots
 
-<img width="930" height="1107" alt="image" src="https://github.com/user-attachments/assets/3752a730-8ccb-4980-85be-91f32f496ac6" /><img width="930" height="1107" alt="image" src="https://github.com/user-attachments/assets/ef6f2b9b-ed55-425b-8a64-2a20cf2da188" /><img width="950" height="1126" alt="image" src="https://github.com/user-attachments/assets/94a7dd8c-f951-4135-94c6-ed3a057a4c63" /><img width="950" height="1126" alt="image" src="https://github.com/user-attachments/assets/2ccb3abe-bef9-4bc4-8b6a-2b91f7374c82" />
-
-
-
-
-![Interface Principal](https://via.placeholder.com/800x500?text=Screenshot+DicomSync)
+<div align="center">
+  <img width="45%" src="https://github.com/user-attachments/assets/3752a730-8ccb-4980-85be-91f32f496ac6" />
+  <img width="45%" src="https://github.com/user-attachments/assets/ef6f2b9b-ed55-425b-8a64-2a20cf2da188" />
+</div>
 
 ---
 
 ## 🚀 Funcionalidades Principais
 
-### 1. Gerenciamento de Estudos
-* **Importação de Pastas:** Varredura recursiva de diretórios para localizar arquivos `.dcm`.
-* **Visualização de Metadados:** Exibição rápida de Nome, ID, Accession Number, Data do Estudo e Descrição.
-* **Listagem Organizada:** Visualização de imagens individuais ou agrupadas por Séries.
+### 1. Gestão e Visualização
+* **Varredura Inteligente:** Localização recursiva de arquivos DICOM com validação de cabeçalho.
+* **Agrupamento Automático:** Visualização organizada por Séries ou instâncias individuais.
+* **UX Brasileira:** Máscaras de data automáticas (`dd/mm/yyyy`) com conversão transparente para o padrão DICOM (`yyyyMMdd`).
 
-### 2. ✏️ DATAMAKER (Edição Inteligente)
-Ferramenta poderosa para correção ou alteração de dados do paciente (Tags DICOM).
-* **Edição em Lote:** Altera todos os arquivos do estudo de uma vez.
-* **Anonimizar Estudo:** Agora é possível você descaracterizar um estudo de forma simples.
-* **Backup Automático:** Antes de qualquer alteração, o sistema cria automaticamente uma pasta `BACKUP_ORIGINAL` com os arquivos intactos.
-* **Feedback Visual:** Barras de progresso duplas (Backup e Atualização) para acompanhar o processo.
+### 2. ✏️ DATAMAKER (Edição e Segurança)
+* **Edição em Lote:** Sincronização de alterações em todos os arquivos do estudo simultaneamente.
+* **Anonimização:** Função para descaracterizar estudos (remover nomes, datas e IDs sensíveis).
+* **Backup Preventivo:** Criação automática da pasta `BACKUP_ORIGINAL` antes de qualquer modificação física nos arquivos.
+* **Processamento Assíncrono:** Operações de I/O realizadas em segundo plano para manter a interface fluida.
 
 ### 3. 📡 Conectividade PACS
-* **C-ECHO (Ping):** Botão dedicado para testar a conectividade com o servidor PACS antes do envio.
-* **C-STORE (Envio):** Envio robusto de imagens selecionadas ou séries completas.
-* **Configuração Flexível:** Definição fácil de IP, Porta, AE Title Local e Remoto.
-
-### 4. 🎨 Interface Moderna
-* **WindowChrome:** Janela sem bordas padrão do Windows, com sombra projetada e cantos arredondados.
-* **Responsividade:** Layout fluido que se adapta ao conteúdo, com suporte a redimensionamento.
+* **C-ECHO Multinível:** Teste de ping DICOM validando tanto a porta TCP quanto a aceitação do AE Title.
+* **C-STORE Robusto:** Motor de envio com tratamento de erros amigável e logs técnicos detalhados.
+* **Feedback em Tempo Real:** Acompanhamento de sucessos e falhas por meio de contadores e barras de progresso.
 
 ---
 
-## 🚧 Roadmap e Melhorias Futuras
+## 🏗️ Arquitetura e Engenharia
 
-O projeto está em evolução constante. Abaixo estão as funcionalidades planejadas para as próximas versões:
+O projeto foi refatorado utilizando princípios de **Clean Architecture** e **MVVM**, garantindo manutenibilidade e portabilidade:
 
-* **[ ] Logs Visuais Detalhados:** A aba "Logs" atualmente aguarda implementação. O objetivo é exibir um console em tempo real com detalhes das operações de I/O, erros de rede e logs da biblioteca `fo-dicom` para facilitar o diagnóstico.
-* **[ ] Anonimização Automática:** Implementação de um modo de envio "Anonimizado". Ao ativar esta opção, o sistema removerá ou mascarará automaticamente dados sensíveis (Nome, PatientID, Data de Nascimento) antes de enviar para o PACS, ideal para uso em pesquisa e ensino.
+* **Services:** Isola a biblioteca `fo-dicom` e a lógica de rede.
+* **ViewModels:** Gerencia o estado da UI e a lógica de apresentação.
+* **Helpers:** Centraliza formatações complexas (Datas, Tags, etc).
+* **Single-File Ready:** Configurado para publicação como executável único (Self-contained), funcionando sem necessidade de instalação do .NET no cliente.
 
 ---
 
 ## 🛠️ Tecnologias Utilizadas
 
-* **Linguagem:** C#
-* **Framework:** .NET (WPF)
-* **Biblioteca DICOM:** [fo-dicom](https://github.com/fo-dicom/fo-dicom) (Versão 5.0+)
-    * Utiliza `DicomClientFactory` para instanciar conexões modernas.
-    * Implementa `FileReadOption.ReadAll` para evitar bloqueio de arquivos durante a edição.
+* **C# / WPF** (.NET Desktop)
+* **[fo-dicom](https://github.com/fo-dicom/fo-dicom):** Versão 5.0+ (Utilizando `DicomClientFactory`).
+* **Multi-threading:** Uso intensivo de `Task.Run` e `Dispatcher` para operações de longa duração.
 
 ---
 
-## 📦 Como Usar
+## 📦 Como Usar (Portabilidade)
 
-1.  **Configurar Rede:**
-    * Preencha os dados do PACS (IP, Porta, AE Title) no topo da tela.
-    * Clique no botão **📶** para testar a conexão (C-ECHO).
-
-2.  **Carregar Estudo:**
-    * Clique em `📂 Importar Estudo` e selecione a pasta raiz.
-    * Clique em `🔍 Localizar` para carregar as imagens na memória.
-
-3.  **Editar Dados (Opcional):**
-    * Vá na aba "Dados do Paciente".
-    * Clique no botão roxo **DATAMAKER**.
-    * Altere os dados desejados e clique em "Salvar Alterações".
-    * *O sistema fará o backup e salvará as alterações no disco.*
-
-4.  **Enviar para o PACS:**
-    * Selecione as imagens ou séries desejadas na lista.
-    * Clique em `ENVIAR SELECIONADOS PARA O PACS`.
+1.  **Configurar PACS:** Informe IP, Porta e AE Titles no topo. Use o botão 📶 para validar.
+2.  **Importar:** Selecione a pasta raiz. O sistema fará a leitura e preencherá automaticamente os dados do paciente.
+3.  **Editar:** Use o **DATAMAKER** para corrigir dados. O sistema formatará as datas automaticamente para você.
+4.  **Sincronizar:** Selecione as séries e envie para o destino com um clique.
 
 ---
 
-## 🔧 Instalação e Execução
+## 🔧 Compilação e Deploy
 
-### Pré-requisitos
-* Visual Studio 2022 ou superior.
-* .NET Desktop Runtime instalado.
-
-### Passos
-1.  Clone este repositório:
-    ```bash
-    git clone [https://github.com/Pedrogomesx/DicomSync](https://github.com/Pedrogomesx/DicomSync).git)
-    ```
-2.  Abra a solução no Visual Studio.
-3.  Restaure os pacotes NuGet.
-4.  Compile e execute (F5).
-
----
-
-## 🤝 Contribuição
-
-Contribuições são bem-vindas! Sinta-se à vontade para abrir Issues ou enviar Pull Requests.
-
-1.  Faça um Fork do projeto.
-2.  Crie uma Branch para sua Feature (`git checkout -b feature/NovaFuncionalidade`).
-3.  Faça o Commit (`git commit -m 'Adicionando nova funcionalidade'`).
-4.  Faça o Push (`git push origin feature/NovaFuncionalidade`).
-5.  Abra um Pull Request.
-
----
-
-## 📄 Licença
-
-Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
-
----
-
-**Desenvolvido com ❤️ para agilizar fluxos de Engenharia Clínica e Radiologia.**
+### Para gerar o Executável Único (Portátil):
+```bash
+dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
