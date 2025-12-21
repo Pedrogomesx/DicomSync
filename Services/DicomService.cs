@@ -2,8 +2,13 @@
 using FellowOakDicom;
 using FellowOakDicom.Network;
 using FellowOakDicom.Network.Client;
+using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net.Sockets;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace DicomSync.Services
 {
@@ -15,85 +20,106 @@ namespace DicomSync.Services
             public string Message { get; set; }
         }
 
+        // 1. TESTE DE CONEXÃO (TCP + C-ECHO)
         public static async Task<DicomOperationResult> TestConnectionAsync(string ip, int port, string localAet, string remoteAet)
         {
-            // 1. Teste de porta TCP (Nível de Rede)
             try
             {
-                using var tcpClient = new TcpClient();
-                // Timeout curto para conexão TCP (3 segundos)
-                var connectTask = tcpClient.ConnectAsync(ip, port);
-
-                if (await Task.WhenAny(connectTask, Task.Delay(3000)) != connectTask)
+                // Nível 1: Teste de porta TCP básica
+                using (var tcpClient = new TcpClient())
                 {
-                    return new DicomOperationResult { Sucess = false, Message = "Porta inativa ou IP inacessível (Timeout)." };
+                    var connectTask = tcpClient.ConnectAsync(ip, port);
+                    if (await Task.WhenAny(connectTask, Task.Delay(3000)) != connectTask)
+                    {
+                        return new DicomOperationResult { Sucess = false, Message = "Timeout: Porta ou IP inacessível." };
+                    }
                 }
-            }
-            catch (Exception)
-            {
-                return new DicomOperationResult { Sucess = false, Message = $"Falha ao abrir conexão TCP com {ip}:{port}." };
-            }
 
-            return new DicomOperationResult { Sucess = true, Message = "Conexão TCP bem-sucedida." };
+                // Nível 2: Teste C-ECHO (Protocolo DICOM)
+                var client = DicomClientFactory.Create(ip, port, false, localAet, remoteAet);
+                var echoSuccess = false;
+
+                var request = new DicomCEchoRequest();
+                request.OnResponseReceived += (req, res) =>
+                {
+                    if (res.Status == DicomStatus.Success) echoSuccess = true;
+                };
+
+                await client.AddRequestAsync(request);
+                await client.SendAsync();
+
+                return new DicomOperationResult
+                {
+                    Sucess = echoSuccess,
+                    Message = echoSuccess ? "Conexão DICOM OK (C-ECHO Sucedido)!" : "Servidor recusou a associação (Verifique AE Titles)."
+                };
+            }
+            catch (Exception ex)
+            {
+                return new DicomOperationResult { Sucess = false, Message = $"Erro técnico: {ex.Message}" };
+            }
         }
 
-        // Responsabilidade: Envio C-STORE (Enviar lista de imagens)
-        public static async Task ExecuteSendAsync(IEnumerable<DicomFile> files, string ip, int port, string localAet, string remoteAet, Action<DicomStatus, DicomFile> onResponse)
+        // 2. ENVIO C-STORE COM SUPORTE A ABORTO IMEDIATO
+        public static async Task ExecuteSendAsync(
+            IEnumerable<DicomFile> files,
+            string ip,
+            int port,
+            string localAet,
+            string remoteAet,
+            Action<DicomStatus, DicomFile> onResponse,
+            CancellationToken token) // Token para cancelamento
         {
             var client = DicomClientFactory.Create(ip, port, false, localAet, remoteAet);
-
-            // Aumentar o timeout para operações C-STORE
             client.ClientOptions.AssociationRequestTimeoutInMs = 60000;
 
             foreach (var file in files)
             {
-                var request = new DicomCStoreRequest(file);
+                // Interrompe o enfileiramento se o usuário cancelar
+                if (token.IsCancellationRequested) break;
 
-                // A cada resposta do servidor, avisamos quem chamou
+                var request = new DicomCStoreRequest(file);
                 request.OnResponseReceived += (req, res) => onResponse?.Invoke(res.Status, file);
 
                 await client.AddRequestAsync(request);
             }
 
-            await client.SendAsync();
+            // Só dispara o envio se não houver pedido de cancelamento pendente
+            if (!token.IsCancellationRequested)
+            {
+                // Passamos o token para o motor do fo-dicom encerrar o tráfego de rede imediatamente se solicitado
+                await client.SendAsync(token);
+            }
         }
-        // Responsabilidade: Varrer pasta e carregar arquivos DICOM na memória
+
+        // 3. CARREGAMENTO DE ARQUIVOS
         public static async Task<List<DicomFile>> LoadFilesAsync(string folderPath, Action<int, int> onProgress)
         {
             return await Task.Run(() =>
             {
                 var validFiles = new List<DicomFile>();
-
-                // 1. Pega lista de todos os arquivos (rápido)
                 var filenames = Directory.GetFiles(folderPath, "*.*", SearchOption.AllDirectories);
                 int total = filenames.Length;
                 int current = 0;
 
-                // 2. Abre um por um (lento)
                 foreach (var file in filenames)
                 {
                     current++;
-
-                    // Avisa quem chamou (a UI) sobre o progresso
-                    // Invoke garante que o código da UI rode na hora certa, mas aqui só disparamos o aviso
                     onProgress?.Invoke(current, total);
 
                     try
                     {
-                        // Tenta abrir como DICOM. Se falhar, cai no catch e ignora o arquivo
+                        // FileReadOption.ReadAll garante que o arquivo não fique preso e possa ser editado/enviado
                         var dicomFile = DicomFile.Open(file, FileReadOption.ReadAll);
                         validFiles.Add(dicomFile);
                     }
-                    catch
-                    {
-                        // Arquivo não é DICOM ou está corrompido. Apenas ignoramos.
-                    }
+                    catch { /* Ignora arquivos não DICOM */ }
                 }
-
                 return validFiles;
             });
         }
-        // Responsabilidade: Transformar um DicomFile em um ViewModel para a Lista
+
+        // 4. MAPEAMENTO PARA VIEWMODELS
         public static DicomItemViewModel CreateItemViewModel(DicomFile dicomFile)
         {
             return new DicomItemViewModel
@@ -101,15 +127,14 @@ namespace DicomSync.Services
                 IsSelected = true,
                 FileName = Path.GetFileName(dicomFile.File.Name),
                 FullPath = dicomFile.File.Name,
-                SeriesUID = dicomFile.Dataset.GetSingleValueOrDefault(DicomTag.SeriesInstanceUID, "Unknown")
+                SeriesUID = dicomFile.Dataset.GetSingleValueOrDefault(DicomTag.SeriesInstanceUID, "Desconhecida")
             };
         }
 
-        // Responsabilidade: Gerar a lista de Séries a partir dos arquivos carregados
         public static List<DicomSeriesViewModel> GroupIntoSeries(IEnumerable<DicomFile> allFiles)
         {
             return allFiles
-                .GroupBy(d => d.Dataset.GetSingleValueOrDefault(DicomTag.SeriesInstanceUID, "Unknown"))
+                .GroupBy(d => d.Dataset.GetSingleValueOrDefault(DicomTag.SeriesInstanceUID, "Desconhecida"))
                 .Select(g => new DicomSeriesViewModel
                 {
                     IsSelected = true,
@@ -120,14 +145,21 @@ namespace DicomSync.Services
                 .ToList();
         }
 
-        // Responsabilidade: Tradutor de Erros centralizado
+        // 5. TRADUTOR DE STATUS DICOM
         public static string GetFriendlyError(DicomStatus status)
         {
             ushort code = status.Code;
-            if (code == 0x0106 || code == 0x0120 || code == 0x0116) return "Tag obrigatória vazia ou ausente.";
-            if (code == 0x0122 || (code >= 0xC000 && code <= 0xCFFF)) return "Compressão (Transfer Syntax) não suportada.";
-            if (code == 0xFE00 || code == 0x0110) return "Operação Abortada pelo servidor.";
-            return "Falha na operação DICOM.";
+            // Erros de Dataset/Tags
+            if (code == 0x0106 || code == 0x0120 || code == 0x0116) return "Erro de sintaxe: Tag obrigatória vazia ou inválida.";
+
+            // Erros de Sintaxe de Transferência (Compressão)
+            if (code == 0x0122) return "Transfer Syntax não suportada pelo PACS destino.";
+
+            // Erros de Processamento no Servidor
+            if (code >= 0xC000 && code <= 0xCFFF) return "Erro de Out of Resources ou falha no banco de dados do PACS.";
+            if (code == 0xFE00 || code == 0x0110) return "Operação abortada pelo servidor remoto.";
+
+            return $"Falha na operação (Status 0x{code:X4}H)";
         }
     }
 }

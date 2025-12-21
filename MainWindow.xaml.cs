@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -17,6 +18,7 @@ namespace DicomSync
 {
     public partial class MainWindow : Window
     {
+        private CancellationTokenSource _sendCts;
         private List<DicomFile> _allDicomFiles = new List<DicomFile>();
 
         public MainWindow()
@@ -79,42 +81,59 @@ namespace DicomSync
 
         private async void btnLoadImages_Click(object sender, RoutedEventArgs e)
         {
+            // REGRA: Se houver um envio em curso, pergunta se deseja abortar
+            if (_sendCts != null)
+            {
+                var confirm = MessageBox.Show("Um envio está em curso. Deseja abortar o envio atual para carregar novos arquivos?",
+                    "Abortar Envio", MessageBoxButton.YesNo, MessageBoxImage.Question);
+
+                if (confirm == MessageBoxResult.Yes)
+                {
+                    _sendCts.Cancel();
+                    await Task.Delay(500); // Aguarda o encerramento da rede
+                }
+                else return;
+            }
+
             string path = txtFolderPath.Text;
             if (string.IsNullOrEmpty(path)) return;
 
+            SetInterfaceElementState(false);
             pbImagesLoading.Visibility = Visibility.Visible;
             _allDicomFiles.Clear();
 
-            // 1. Carrega Arquivos via Serviço
-            var files = await Services.DicomService.LoadFilesAsync(path, (current, total) =>
+            try
             {
-                Dispatcher.Invoke(() =>
+                var files = await Services.DicomService.LoadFilesAsync(path, (current, total) =>
                 {
-                    pbImagesLoading.Maximum = total;
-                    pbImagesLoading.Value = current;
-                    lblStatusImages.Text = $"Lendo: {current}/{total}";
+                    Dispatcher.Invoke(() =>
+                    {
+                        pbImagesLoading.Maximum = total;
+                        pbImagesLoading.Value = current;
+                        lblStatusImages.Text = $"Lendo: {current}/{total}";
+                    });
                 });
-            });
 
-            _allDicomFiles = files;
+                _allDicomFiles = files;
 
-            if (_allDicomFiles.Count > 0)
-            {
-                // 2. Preenche dados do Paciente (Cabeçalho)
-                FillPatientData(_allDicomFiles[0].Dataset);
-
-                // 3. Alimenta as listas da UI usando as ViewModels
-                lstImages.ItemsSource = files.Select(f => Services.DicomService.CreateItemViewModel(f)).ToList();
-                lstSeries.ItemsSource = Services.DicomService.GroupIntoSeries(files);
-
-                lblTotalSucesso.Text = _allDicomFiles.Count.ToString();
-                lblStatusImages.Text = "Estudo carregado com sucesso.";
+                if (_allDicomFiles.Count > 0)
+                {
+                    FillPatientData(_allDicomFiles[0].Dataset);
+                    lstImages.ItemsSource = files.Select(f => Services.DicomService.CreateItemViewModel(f)).ToList();
+                    lstSeries.ItemsSource = Services.DicomService.GroupIntoSeries(files);
+                    lblTotalSucesso.Text = _allDicomFiles.Count.ToString();
+                    lblStatusImages.Text = "Estudo carregado com sucesso.";
+                }
+                else
+                {
+                    MessageBox.Show("Nenhum arquivo DICOM válido encontrado.");
+                }
             }
-            else
+            finally
             {
-                MessageBox.Show("Nenhum arquivo DICOM válido encontrado.");
+                pbImagesLoading.Visibility = Visibility.Collapsed;
+                SetInterfaceElementState(true);
             }
-            pbImagesLoading.Visibility = Visibility.Collapsed;
         }
 
         private void FillPatientData(DicomDataset dataset)
@@ -124,7 +143,6 @@ namespace DicomSync
             txtAccessionNumber.Text = dataset.GetSingleValueOrDefault(DicomTag.AccessionNumber, "N/A");
             txtStudyDescription.Text = dataset.GetSingleValueOrDefault(DicomTag.StudyDescription, "N/A");
 
-            // Formatação de data brasileira
             txtBirthDate.Text = DicomFormatter.FormatDicomDate(dataset.GetSingleValueOrDefault(DicomTag.PatientBirthDate, ""));
             txtStudyDate.Text = DicomFormatter.FormatDicomDate(dataset.GetSingleValueOrDefault(DicomTag.StudyDate, ""));
         }
@@ -135,16 +153,14 @@ namespace DicomSync
         {
             if (!int.TryParse(txtPortRemote.Text, out int port)) return;
 
-            Cursor = Cursors.Wait;
-            btnEcho.IsEnabled = false;
+            SetInterfaceElementState(false);
 
             var result = await Services.DicomService.TestConnectionAsync(txtIpRemote.Text, port, txtAeLocal.Text, txtAeRemote.Text);
 
             MessageBox.Show(result.Message, "Teste de Conexão", MessageBoxButton.OK,
                             result.Sucess ? MessageBoxImage.Information : MessageBoxImage.Error);
 
-            btnEcho.IsEnabled = true;
-            Cursor = Cursors.Arrow;
+            SetInterfaceElementState(true);
         }
 
         private async void btnSend_Click(object sender, RoutedEventArgs e)
@@ -152,8 +168,9 @@ namespace DicomSync
             if (_allDicomFiles.Count == 0) return;
             if (!int.TryParse(txtPortRemote.Text, out int port)) return;
 
-            btnSend.IsEnabled = false;
-            Cursor = Cursors.Wait;
+            // BLOQUEIO DA INTERFACE
+            SetInterfaceElementState(false);
+            _sendCts = new CancellationTokenSource();
 
             int successCount = 0;
             int errorCount = 0;
@@ -165,39 +182,65 @@ namespace DicomSync
 
             try
             {
-                await Services.DicomService.ExecuteSendAsync(_allDicomFiles, txtIpRemote.Text, port, txtAeLocal.Text, txtAeRemote.Text, (status, file) =>
-                {
-                    Dispatcher.Invoke(() =>
+                await Services.DicomService.ExecuteSendAsync(
+                    _allDicomFiles,
+                    txtIpRemote.Text,
+                    port,
+                    txtAeLocal.Text,
+                    txtAeRemote.Text,
+                    (status, file) =>
                     {
-                        if (status == DicomStatus.Success) successCount++;
-                        else
+                        // VERIFICAÇÃO DE CANCELAMENTO
+                        if (_sendCts != null && _sendCts.IsCancellationRequested) return;
+
+                        Dispatcher.Invoke(() =>
                         {
-                            errorCount++;
-                            errorList.Insert(0, new DicomErrorViewModel
+                            if (_sendCts == null || _sendCts.IsCancellationRequested) return;
+
+                            if (status == DicomStatus.Success)
                             {
-                                InstanceUID = file.Dataset.GetSingleValueOrDefault(DicomTag.SOPInstanceUID, "N/A"),
-                                ErrorCode = $"0x{status.Code:X4}H",
-                                Description = status.ToString(),
-                                ProbableCause = Services.DicomService.GetFriendlyError(status),
-                                Time = DateTime.Now.ToString("HH:mm:ss")
-                            });
-                            lstErrorLogs.ItemsSource = null;
-                            lstErrorLogs.ItemsSource = errorList;
-                        }
+                                successCount++;
+                            }
+                            else
+                            {
+                                errorCount++;
+                                errorList.Insert(0, new DicomErrorViewModel
+                                {
+                                    InstanceUID = file.Dataset.GetSingleValueOrDefault(DicomTag.SOPInstanceUID, "N/A"),
+                                    ErrorCode = $"0x{status.Code:X4}H",
+                                    Description = status.ToString(),
+                                    ProbableCause = Services.DicomService.GetFriendlyError(status),
+                                    Time = DateTime.Now.ToString("HH:mm:ss")
+                                });
+                                lstErrorLogs.ItemsSource = null;
+                                lstErrorLogs.ItemsSource = errorList;
+                            }
 
-                        pbImagesLoading.Value++;
-                        lblSucessoCount.Text = successCount.ToString();
-                        lblErroCount.Text = errorCount.ToString();
-                    });
-                });
+                            pbImagesLoading.Value++;
+                            lblSucessoCount.Text = successCount.ToString();
+                            lblErroCount.Text = errorCount.ToString();
+                        });
+                    },
+                    _sendCts.Token); // Passa o token para o serviço de rede
 
-                MessageBox.Show($"Envio Finalizado!\nSucessos: {successCount}\nFalhas: {errorCount}");
+                if (!_sendCts.IsCancellationRequested)
+                {
+                    MessageBox.Show($"Envio Finalizado!\nSucessos: {successCount}\nFalhas: {errorCount}", "DicomSync");
+                }
+                else
+                {
+                    lblStatusImages.Text = "Envio cancelado pelo usuário.";
+                }
             }
-            catch (Exception ex) { MessageBox.Show("Erro crítico: " + ex.Message); }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Erro crítico no envio: " + ex.Message);
+            }
             finally
             {
-                btnSend.IsEnabled = true;
-                Cursor = Cursors.Arrow;
+                SetInterfaceElementState(true);
+                _sendCts?.Dispose();
+                _sendCts = null;
                 pbImagesLoading.Visibility = Visibility.Collapsed;
             }
         }
@@ -207,11 +250,23 @@ namespace DicomSync
         private void btnEditData_Click(object sender, RoutedEventArgs e)
         {
             if (_allDicomFiles.Count == 0) return;
+
             var editWindow = new EditDataWindow(_allDicomFiles);
             if (editWindow.ShowDialog() == true)
             {
                 FillPatientData(_allDicomFiles[0].Dataset);
             }
+        }
+
+        private void SetInterfaceElementState(bool isEnabled)
+        {
+            btnSend.IsEnabled = isEnabled;
+            btnEcho.IsEnabled = isEnabled;
+            btnEditData.IsEnabled = isEnabled;
+            btnLoadImages.IsEnabled = isEnabled;
+            btnSelectFolder.IsEnabled = isEnabled;
+
+            this.Cursor = isEnabled ? Cursors.Arrow : Cursors.Wait;
         }
 
         private void DateTextBox_TextChanged(object sender, TextChangedEventArgs e)
