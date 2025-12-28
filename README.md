@@ -1,72 +1,75 @@
-# 🏥 DicomSync - Editor e Envio DICOM
+# 🏥 DicomSync - Editor, Anonimizador e Cliente DICOM
 
-![Status do Projeto](https://img.shields.io/badge/Status-Estável-green)
-![.NET](https://img.shields.io/badge/.NET-WPF-purple)
-![Arquitetura](https://img.shields.io/badge/Arquitetura-MVVM--Clean-blue)
+![Status](https://img.shields.io/badge/Status-Estável-2ea44f)
+![.NET](https://img.shields.io/badge/.NET-WPF-512bd4)
+![License](https://img.shields.io/badge/License-MIT-blue)
+![Arquitetura](https://img.shields.io/badge/Arquitetura-MVVM--Clean-orange)
 
-**DicomSync** é uma ferramenta robusta para gestão, edição técnica e sincronização de exames DICOM. Desenvolvida com foco em performance e confiabilidade, a aplicação isola a complexidade do protocolo DICOM em uma arquitetura moderna, facilitando a correção de metadados e o envio para servidores PACS.
+**DicomSync** é uma ferramenta para gestão, edição técnica, anonimização e transmissão de imagens médicas (DICOM). Desenvolvida com foco em performance e integridade de dados, a aplicação abstrai a complexidade do protocolo DICOM em uma interface moderna, facilitando fluxos de trabalho em engenharia clínica e TI hospitalar.
 
 ---
 
 ## 📸 Screenshots
 
 <div align="center">
-  <img width="45%" src="https://github.com/user-attachments/assets/3752a730-8ccb-4980-85be-91f32f496ac6" />
-  <img width="45%" src="https://github.com/user-attachments/assets/ef6f2b9b-ed55-425b-8a64-2a20cf2da188" />
+  <img width="45%" src="https://github.com/user-attachments/assets/3752a730-8ccb-4980-85be-91f32f496ac6" alt="Tela Principal" />
+  <img width="45%" src="https://github.com/user-attachments/assets/ef6f2b9b-ed55-425b-8a64-2a20cf2da188" alt="Editor DICOM" />
 </div>
 
 ---
 
 ## 🚀 Funcionalidades Principais
 
-### 1. Gestão e Visualização
-* **Varredura Inteligente:** Localização recursiva de arquivos DICOM com validação de cabeçalho.
-* **Agrupamento Automático:** Visualização organizada por Séries ou instâncias individuais.
-* **UX Brasileira:** Máscaras de data automáticas (`dd/mm/yyyy`) com conversão transparente para o padrão DICOM (`yyyyMMdd`).
+### 1. 🛡️ Segurança e Anonimização (LGPD)
+Funcionalidade crítica para compartilhamento de exames para ensino ou suporte técnico sem expor o paciente.
+* **Remoção de PII:** Remove automaticamente nomes, IDs de pacientes e datas de nascimento.
+* **Backup de Segurança:** O sistema cria uma cópia `BACKUP_ORIGINAL` antes de tocar em qualquer byte do arquivo original.
+* **Sanitização de Tags:** Limpeza de metadados sensíveis conforme normas de conformidade.
 
-### 2. ✏️ DATAMAKER (Edição e Segurança)
-* **Edição em Lote:** Sincronização de alterações em todos os arquivos do estudo simultaneamente.
-* **Anonimização:** Função para descaracterizar estudos (remover nomes, datas e IDs sensíveis).
-* **Backup Preventivo:** Criação automática da pasta `BACKUP_ORIGINAL` antes de qualquer modificação física nos arquivos.
-* **Processamento Assíncrono:** Operações de I/O realizadas em segundo plano para manter a interface fluida.
+### 2. ✏️ Editor DATAMAKER
+* **Edição em Lote:** Altere o nome do paciente ou ID em centenas de imagens simultaneamente.
+* **Máscaras Inteligentes:** Inputs com máscaras brasileiras (`dd/mm/yyyy`) que convertem automaticamente para o padrão DICOM (`yyyyMMdd`) no background.
+* **Validação de Tags:** Impede a inserção de caracteres inválidos que quebrariam o envio para o PACS.
 
 ### 3. 📡 Conectividade PACS
-* **C-ECHO Multinível:** Teste de ping DICOM validando tanto a porta TCP quanto a aceitação do AE Title.
-* **C-STORE Robusto:** Motor de envio com tratamento de erros amigável e logs técnicos detalhados.
-* **Feedback em Tempo Real:** Acompanhamento de sucessos e falhas por meio de contadores e barras de progresso.
+* **C-ECHO (Ping DICOM):** Teste de conectividade real, validando TCP/IP e aceitação do AE Title.
+* **C-STORE (Envio):** Motor de envio assíncrono com retentativas e log detalhado de falhas.
+* **Feedback Visual:** Barras de progresso e contadores de sucesso/erro em tempo real.
+
+### 4. 📂 Gestão de Arquivos
+* **Varredura Recursiva:** Encontra arquivos DICOM (com ou sem extensão `.dcm`) em subpastas profundas.
+* **Agrupamento Lógico:** Organiza arquivos soltos em uma estrutura de árvore por Paciente > Estudo > Série.
 
 ---
 
 ## 🏗️ Arquitetura e Engenharia
 
-O projeto foi refatorado utilizando princípios de **Clean Architecture** e **MVVM**, garantindo manutenibilidade e portabilidade:
+O projeto foi refatorado seguindo princípios de **Clean Architecture** e **MVVM**, visando desacoplamento e testabilidade.
 
-* **Services:** Isola a biblioteca `fo-dicom` e a lógica de rede.
-* **ViewModels:** Gerencia o estado da UI e a lógica de apresentação.
-* **Helpers:** Centraliza formatações complexas (Datas, Tags, etc).
-* **Single-File Ready:** Configurado para publicação como executável único (Self-contained), funcionando sem necessidade de instalação do .NET no cliente.
-
----
-
-## 🛠️ Tecnologias Utilizadas
-
-* **C# / WPF** (.NET Desktop)
-* **[fo-dicom](https://github.com/fo-dicom/fo-dicom):** Versão 5.0+ (Utilizando `DicomClientFactory`).
-* **Multi-threading:** Uso intensivo de `Task.Run` e `Dispatcher` para operações de longa duração.
+* **Core/Services:** Camada pura que isola a biblioteca `fo-dicom` e regras de negócio.
+* **UI/ViewModels:** Gerenciamento de estado reativo, sem código de lógica no `CodeBehind` do XAML.
+* **Helpers:** Utilitários estáticos para manipulação de Tags DICOM e conversão de datas.
+* **Self-Contained:** A aplicação não depende de instalação prévia do .NET Runtime na máquina do cliente.
 
 ---
 
-## 📦 Como Usar (Portabilidade)
+## 🧪 Como Testar (Ambiente de Desenvolvimento)
 
-1.  **Configurar PACS:** Informe IP, Porta e AE Titles no topo. Use o botão 📶 para validar.
-2.  **Importar:** Selecione a pasta raiz. O sistema fará a leitura e preencherá automaticamente os dados do paciente.
-3.  **Editar:** Use o **DATAMAKER** para corrigir dados. O sistema formatará as datas automaticamente para você.
-4.  **Sincronizar:** Selecione as séries e envie para o destino com um clique.
+Para testar o envio de imagens (C-STORE) sem possuir um PACS real, recomenda-se o uso de ferramentas de simulação:
+
+1. **Baixe um Servidor de Teste:** Utilize o **HAPI TestPanel** ou **Orthanc Server**.
+2. **Configure o Listener:** No simulador, abra uma porta (ex: `104` ou `11112`) e defina um AE Title (ex: `ANY-SCP`).
+3. **Configure o DicomSync:**
+   * IP: `127.0.0.1` (Localhost)
+   * Porta: `11112` (A mesma do simulador)
+   * AE Title: `ANY-SCP`
+4. **Execute:** Clique no botão de teste (ícone de sinal) para validar o C-ECHO.
 
 ---
 
 ## 🔧 Compilação e Deploy
 
-### Para gerar o Executável Único (Portátil):
+Para gerar um executável único (portátil) que roda em qualquer Windows 64bits:
+
 ```bash
-dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
+dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
