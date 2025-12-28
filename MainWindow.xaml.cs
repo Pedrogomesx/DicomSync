@@ -1,19 +1,17 @@
 ﻿using DicomSync.Helpers;
-
 using DicomSync.ViewModels;
 using FellowOakDicom;
 using FellowOakDicom.Network;
 using Microsoft.Win32;
-
-
 using System.Collections.ObjectModel;
 using System.IO;
-
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Collections.ObjectModel;
-using System.Windows.Media; // Adicione este using
+using System.Windows.Media;
+using System.Linq; // Necessário para Select e ToList
 
 namespace DicomSync
 {
@@ -22,9 +20,8 @@ namespace DicomSync
         private CancellationTokenSource _sendCts;
         private List<DicomFile> _allDicomFiles = [];
         private ObservableCollection<DicomErrorViewModel> _errorList = [];
-        
 
-    public MainWindow()
+        public MainWindow()
         {
             InitializeComponent();
             lstErrorLogs.ItemsSource = _errorList;
@@ -85,7 +82,6 @@ namespace DicomSync
 
         private async void btnLoadImages_Click(object sender, RoutedEventArgs e)
         {
-            // REGRA: Se houver um envio em curso, pergunta se deseja abortar
             if (_sendCts != null)
             {
                 var confirm = MessageBox.Show("Um envio está em curso. Deseja abortar o envio atual para carregar novos arquivos?",
@@ -94,7 +90,7 @@ namespace DicomSync
                 if (confirm == MessageBoxResult.Yes)
                 {
                     _sendCts.Cancel();
-                    await Task.Delay(500); // Aguarda o encerramento da rede
+                    await Task.Delay(500);
                 }
                 else return;
             }
@@ -125,7 +121,11 @@ namespace DicomSync
                     FillPatientData(_allDicomFiles[0].Dataset);
                     lstImages.ItemsSource = files.Select(f => Services.DicomService.CreateItemViewModel(f)).ToList();
                     lstSeries.ItemsSource = Services.DicomService.GroupIntoSeries(files);
+                    
+                    // Atualiza os labels de total de arquivos carregados
                     lblTotalSucesso.Text = _allDicomFiles.Count.ToString();
+                    lblTotalErro.Text = _allDicomFiles.Count.ToString(); // Ajuste solicitado
+                    
                     lblStatusImages.Text = "Estudo carregado com sucesso.";
                 }
                 else
@@ -146,7 +146,6 @@ namespace DicomSync
             txtPatientID.Text = dataset.GetSingleValueOrDefault(DicomTag.PatientID, "N/A");
             txtAccessionNumber.Text = dataset.GetSingleValueOrDefault(DicomTag.AccessionNumber, "N/A");
             txtStudyDescription.Text = dataset.GetSingleValueOrDefault(DicomTag.StudyDescription, "N/A");
-
             txtBirthDate.Text = DicomFormatter.FormatDicomDate(dataset.GetSingleValueOrDefault(DicomTag.PatientBirthDate, ""));
             txtStudyDate.Text = DicomFormatter.FormatDicomDate(dataset.GetSingleValueOrDefault(DicomTag.StudyDate, ""));
         }
@@ -155,20 +154,14 @@ namespace DicomSync
         #region OPERAÇÕES DICOM (ECHO / SEND)
         private async void btnEcho_Click(object sender, RoutedEventArgs e)
         {
-            // Reseta visualização inicial
             bdrStatus.Visibility = Visibility.Collapsed;
-
-            // --- 1. Validação ---
             if (!int.TryParse(txtPortRemote.Text, out int port))
             {
-                // Define o visual de ERRO DE VALIDAÇÃO
                 txtLogTitle.Text = "Erro de Validação";
-                txtLogTitle.Foreground = Brushes.DarkRed; // #8B0000
-
+                txtLogTitle.Foreground = Brushes.DarkRed;
                 txtLogMessage.Text = "A porta informada não é válida. Insira apenas números.";
                 txtLogCode.Text = "VAL-01";
                 txtLogUID.Text = "Local";
-
                 bdrStatus.Visibility = Visibility.Visible;
                 return;
             }
@@ -176,44 +169,33 @@ namespace DicomSync
             try
             {
                 SetInterfaceElementState(false);
-
-                // --- 2. Teste de Conexão ---
                 var result = await Services.DicomService.TestConnectionAsync(
                     txtIpRemote.Text, port, txtAeLocal.Text, txtAeRemote.Text);
 
-                // Preenche Título e Mensagem baseados no resultado
                 txtLogTitle.Text = result.Sucess ? "Conexão Estabelecida" : "Falha na Conexão";
                 txtLogMessage.Text = result.Message;
 
-                // Define a cor do título e código
                 if (result.Sucess)
                 {
-                    // Verde (#2E7D32)
                     txtLogTitle.Foreground = new SolidColorBrush(Color.FromRgb(46, 125, 50));
                     txtLogCode.Text = "OK-200";
                 }
                 else
                 {
-                    // Vermelho Escuro (#B71C1C)
                     txtLogTitle.Foreground = new SolidColorBrush(Color.FromRgb(183, 28, 28));
                     txtLogCode.Text = "ERR-NET";
                 }
 
-                // Mostra o destino no UID
                 txtLogUID.Text = $"{txtIpRemote.Text}:{port}";
-
                 bdrStatus.Visibility = Visibility.Visible;
             }
             catch (Exception ex)
             {
-                // --- 3. Erro Crítico (Crash) ---
                 txtLogTitle.Text = "Erro Crítico do Sistema";
                 txtLogTitle.Foreground = Brushes.Red;
-
                 txtLogMessage.Text = ex.Message;
                 txtLogCode.Text = "EX-500";
                 txtLogUID.Text = "System Exception";
-
                 bdrStatus.Visibility = Visibility.Visible;
             }
             finally
@@ -227,10 +209,9 @@ namespace DicomSync
             if (_allDicomFiles.Count == 0) return;
             if (!int.TryParse(txtPortRemote.Text, out int port)) return;
 
-            // BLOQUEIO DA INTERFACE E RESET DE LOGS
             SetInterfaceElementState(false);
             _sendCts = new CancellationTokenSource();
-            _errorList.Clear(); // Limpa logs de envios anteriores de forma segura
+            _errorList.Clear();
 
             int successCount = 0;
             int errorCount = 0;
@@ -238,6 +219,10 @@ namespace DicomSync
             pbImagesLoading.Maximum = _allDicomFiles.Count;
             pbImagesLoading.Value = 0;
             pbImagesLoading.Visibility = Visibility.Visible;
+
+            // Define os totais máximos nos labels antes de começar
+            lblTotalSucesso.Text = _allDicomFiles.Count.ToString();
+            lblTotalErro.Text = _allDicomFiles.Count.ToString();
 
             try
             {
@@ -249,7 +234,6 @@ namespace DicomSync
                     txtAeRemote.Text,
                     (status, file) =>
                     {
-                        // VERIFICAÇÃO DE CANCELAMENTO
                         if (_sendCts != null && _sendCts.IsCancellationRequested) return;
 
                         Dispatcher.Invoke(() =>
@@ -263,7 +247,6 @@ namespace DicomSync
                             else
                             {
                                 errorCount++;
-                                // Adiciona diretamente na coleção que a UI está observando
                                 _errorList.Insert(0, new DicomErrorViewModel
                                 {
                                     InstanceUID = file.Dataset.GetSingleValueOrDefault(DicomTag.SOPInstanceUID, "N/A"),
@@ -323,7 +306,6 @@ namespace DicomSync
             btnEditData.IsEnabled = isEnabled;
             btnLoadImages.IsEnabled = isEnabled;
             btnSelectFolder.IsEnabled = isEnabled;
-
             this.Cursor = isEnabled ? Cursors.Arrow : Cursors.Wait;
         }
 
@@ -333,10 +315,8 @@ namespace DicomSync
             {
                 int selectionStart = textBox.SelectionStart;
                 int oldLength = textBox.Text.Length;
-
                 string digitsOnly = new string(textBox.Text.Where(char.IsDigit).ToArray());
                 if (digitsOnly.Length > 8) digitsOnly = digitsOnly.Substring(0, 8);
-
                 string formatted = "";
                 if (digitsOnly.Length > 0)
                 {
@@ -348,7 +328,6 @@ namespace DicomSync
                             formatted += "/" + digitsOnly.Substring(4, Math.Min(digitsOnly.Length - 4, 4));
                     }
                 }
-
                 if (textBox.Text != formatted)
                 {
                     textBox.Text = formatted;
@@ -359,14 +338,7 @@ namespace DicomSync
         }
         #endregion
 
-        private void lstErrorLogs_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-
-        }
-
-        private void txtFolderPath_TextChanged(object sender, TextChangedEventArgs e)
-        {
-
-        }
+        private void lstErrorLogs_SelectionChanged(object sender, SelectionChangedEventArgs e) { }
+        private void txtFolderPath_TextChanged(object sender, TextChangedEventArgs e) { }
     }
 }

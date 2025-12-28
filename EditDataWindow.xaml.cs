@@ -71,12 +71,21 @@ namespace DicomSync
 
                 await Task.Run(() =>
                 {
+                    
                     string studyFolder = Path.GetDirectoryName(_filesToEdit[0].File.Name);
-                    string backupFolder = Path.Combine(studyFolder, "BACKUP_ORIGINAL");
+                    
+                    // 1. Pegamos a pasta pai (C:\Users\pedro\Downloads\STD)
+                    string parentFolder = Path.GetDirectoryName(studyFolder);
 
-                    if (!Directory.Exists(backupFolder))
-                        Directory.CreateDirectory(backupFolder);
+                    // 2 e 3 Pegamos apenas o nome da pasta atual (ID_21021994) e combinamos o path + bkp
+                    string folderName = Path.GetFileName(studyFolder) + "_bkp";
 
+                    // 4. Combinamos com a pasta pai para o caminho completo
+                    var backupFolderPath = Path.Combine(parentFolder, folderName);
+
+                    // 5. Criamos o diretório
+                    if (!Directory.Exists(backupFolderPath))
+                        Directory.CreateDirectory(backupFolderPath);
                     Dispatcher.Invoke(() =>
                     {
                         pbBackup.Maximum = _filesToEdit.Count;
@@ -87,7 +96,7 @@ namespace DicomSync
                     foreach (var file in _filesToEdit)
                     {
                         string originalPath = file.File.Name;
-                        string destPath = Path.Combine(backupFolder, Path.GetFileName(originalPath));
+                        string destPath = Path.Combine(backupFolderPath, Path.GetFileName(originalPath));
                         if (!File.Exists(destPath)) File.Copy(originalPath, destPath);
                         Dispatcher.Invoke(() => pbBackup.Value++);
                     }

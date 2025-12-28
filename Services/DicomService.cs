@@ -2,13 +2,8 @@
 using FellowOakDicom;
 using FellowOakDicom.Network;
 using FellowOakDicom.Network.Client;
-using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Net.Sockets;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace DicomSync.Services
 {
