@@ -3,15 +3,16 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="DicomSync - Editor e Envio" 
         Height="820" Width="950"
+        MinHeight="650" MinWidth="950"
         WindowState="Normal" 
         WindowStartupLocation="CenterScreen"
         WindowStyle="None"
         AllowsTransparency="True"
         Background="Transparent"
-        ResizeMode="CanResize">
+        ResizeMode="CanResizeWithGrip">
 
     <WindowChrome.WindowChrome>
-        <WindowChrome CaptionHeight="0" ResizeBorderThickness="5" CornerRadius="0" GlassFrameThickness="0"/>
+        <WindowChrome CaptionHeight="35" ResizeBorderThickness="8" CornerRadius="0" GlassFrameThickness="0" UseAeroCaptionButtons="False"/>
     </WindowChrome.WindowChrome>
 
     <Window.Resources>
@@ -26,7 +27,6 @@
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Foreground" Value="#555"/>
-            <Setter Property="FontSize" Value="12"/>
             <Setter Property="Width" Value="45"/>
             <Setter Property="Height" Value="32"/>
             <Setter Property="WindowChrome.IsHitTestVisibleInChrome" Value="True"/>
@@ -59,94 +59,52 @@
             <Setter Property="FontSize" Value="18"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Foreground" Value="#111827"/>
-            <Setter Property="Margin" Value="5,0,0,10"/>
+            <Setter Property="Margin" Value="0,0,0,15"/>
         </Style>
-
         <Style TargetType="Label">
             <Setter Property="FontWeight" Value="Medium"/>
             <Setter Property="Foreground" Value="{StaticResource TextGray}"/>
-            <Setter Property="Margin" Value="0,3,0,1"/>
-            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Margin" Value="0,5,0,2"/>
+            <Setter Property="FontSize" Value="12"/>
         </Style>
-
         <Style TargetType="TextBox">
-            <Setter Property="Height" Value="30"/>
+            <Setter Property="Height" Value="35"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
-            <Setter Property="Padding" Value="8,0"/>
+            <Setter Property="Padding" Value="10,0"/>
             <Setter Property="BorderBrush" Value="{StaticResource BorderColor}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Background" Value="#FAFAFA"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="TextBox">
-                        <Border x:Name="border" CornerRadius="4" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
-                            <ScrollViewer x:Name="PART_ContentHost"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="BorderBrush" Value="#B0B0B0"/>
-                            </Trigger>
-                            <Trigger Property="IsKeyboardFocused" Value="True">
-                                <Setter TargetName="border" Property="BorderBrush" Value="{StaticResource PrimaryColor}"/>
-                                <Setter TargetName="border" Property="BorderThickness" Value="2"/>
-                                <Setter TargetName="border" Property="Background" Value="#FFFFFF"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
         </Style>
-
         <Style x:Key="CardStyle" TargetType="Border">
             <Setter Property="Background" Value="{StaticResource CardBackground}"/>
             <Setter Property="CornerRadius" Value="8"/>
-            <Setter Property="Padding" Value="12"/>
+            <Setter Property="Padding" Value="20"/>
             <Setter Property="Effect">
                 <Setter.Value>
                     <DropShadowEffect Color="Black" Direction="270" ShadowDepth="1" Opacity="0.05" BlurRadius="4"/>
                 </Setter.Value>
             </Setter>
         </Style>
-
         <Style x:Key="PrimaryButton" TargetType="Button">
             <Setter Property="Background" Value="{StaticResource PrimaryColor}"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="FontSize" Value="14"/>
             <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="Height" Value="42"/>
+            <Setter Property="Height" Value="45"/>
             <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="border" CornerRadius="6" Background="{TemplateBinding Background}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="{StaticResource PrimaryDarkColor}"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
         </Style>
 
         <Style TargetType="TabItem">
-            <Setter Property="Padding" Value="15,8"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="TabItem">
-                        <Border x:Name="Border" BorderThickness="0,0,0,3" BorderBrush="Transparent" Margin="0,0,2,0">
-                            <ContentPresenter x:Name="ContentSite" ContentSource="Header" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="{TemplateBinding Padding}"/>
+                        <Border x:Name="Border" BorderThickness="0,0,0,3" BorderBrush="Transparent" Padding="10">
+                            <ContentPresenter x:Name="ContentSite" ContentSource="Header" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsSelected" Value="True">
                                 <Setter TargetName="Border" Property="BorderBrush" Value="{StaticResource PrimaryColor}"/>
                                 <Setter Property="Foreground" Value="{StaticResource PrimaryColor}"/>
-                                <Setter Property="FontWeight" Value="Bold"/>
-                            </Trigger>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Border" Property="Background" Value="#F8FAFC"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -155,11 +113,10 @@
         </Style>
     </Window.Resources>
 
-    <Border x:Name="MainBorder" Background="{StaticResource BackgroundColor}" CornerRadius="8" BorderBrush="#007ACC" BorderThickness="1" Margin="10">
+    <Border x:Name="MainBorder" Background="{StaticResource BackgroundColor}" CornerRadius="8" BorderBrush="#007ACC" BorderThickness="1" Margin="5">
         <Border.Effect>
-            <DropShadowEffect Color="Black" Direction="270" ShadowDepth="0" BlurRadius="15" Opacity="0.3"/>
+            <DropShadowEffect Color="Black" Direction="270" ShadowDepth="0" BlurRadius="10" Opacity="0.2"/>
         </Border.Effect>
-
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="35"/>
@@ -168,31 +125,23 @@
             </Grid.RowDefinitions>
 
             <Grid Grid.Row="0" Background="White" MouseLeftButtonDown="TitleBar_MouseDown">
-                <Border CornerRadius="8,8,0,0" Background="White"/>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="15,0,0,0">
                     <TextBlock Text="DICOM SYNC" FontWeight="Bold" Foreground="{StaticResource PrimaryColor}" FontSize="14"/>
-                    <TextBlock Text=" - Editor e Envio" Foreground="#888" VerticalAlignment="Center" Margin="5,0,0,0" FontSize="12"/>
+                    <TextBlock Text=" - Editor e Envio" Foreground="#888" Margin="5,0,0,0" FontSize="12"/>
                 </StackPanel>
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                     <Button Content="—" Style="{StaticResource WindowButtonStyle}" Click="btnMinimize_Click"/>
-                    <Button x:Name="btnMaximize" Content="⬜" FontSize="10" Style="{StaticResource WindowButtonStyle}" Click="btnMaximize_Click"/>
+                    <Button x:Name="btnMaximize" Content="⬜" Style="{StaticResource WindowButtonStyle}" Click="btnMaximize_Click"/>
                     <Button Content="✕" Style="{StaticResource CloseButtonStyle}" Click="btnClose_Click"/>
                 </StackPanel>
             </Grid>
 
-            <Grid Grid.Row="1">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="15">
 
-                <StackPanel Grid.Row="0" Margin="20,10,20,5">
-                    <Border Style="{StaticResource CardStyle}">
+                    <Border Style="{StaticResource CardStyle}" Padding="15">
                         <StackPanel>
-                            <TextBlock FontSize="22" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,10">
-                                <Run Text="DICOM " Foreground="{StaticResource PrimaryColor}"/><Run Text="SYNC" Foreground="#333333"/>
-                            </TextBlock>
-
+                            <TextBlock FontSize="22" FontWeight="Bold" Foreground="{StaticResource PrimaryColor}" HorizontalAlignment="Center" Margin="0,0,0,10"><Run Text="DICOM "/><Run Text="SYNC" Foreground="#333333"/></TextBlock>
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
@@ -205,206 +154,215 @@
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
-
                                 <StackPanel Grid.Column="0">
                                     <Label Content="AE Title Local"/>
                                     <TextBox x:Name="txtAeLocal" Text="DICOMSYNC"/>
                                     <Label Content="IP do PACS"/>
                                     <TextBox x:Name="txtIpRemote" Text="127.0.0.1"/>
                                 </StackPanel>
-
                                 <StackPanel Grid.Column="2">
                                     <Label Content="AE Title PACS"/>
                                     <TextBox x:Name="txtAeRemote" Text="PACSSERVER"/>
                                     <Label Content="Porta"/>
                                     <TextBox x:Name="txtPortRemote" Text="104"/>
                                 </StackPanel>
-
-                                <Button x:Name="btnEcho" Grid.Row="0" Grid.Column="4" VerticalAlignment="Bottom" Click="btnEcho_Click" 
-                                        ToolTip="Testar Conexão (C-ECHO)" Width="40" Height="30" Cursor="Hand" Background="#E0E0E0">
-                                    <TextBlock Text="📶" FontSize="16" Foreground="#333"/>
-                                </Button>
-
-                                <Border x:Name="bdrStatus" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="5" 
-                                        CornerRadius="4" Margin="0,10,0,0" Padding="8" BorderThickness="1" BorderBrush="#E0E0E0" Background="#FAFAFA" Visibility="Collapsed">
+                                <Button x:Name="btnEcho" Grid.Column="4" VerticalAlignment="Bottom" Click="btnEcho_Click" Width="40" Height="35" Content="📶"/>
+                                <Border x:Name="bdrStatus" Grid.Row="1" Grid.ColumnSpan="5" Margin="0,15,0,0" Visibility="Collapsed" Background="#FAFAFA" Padding="8" BorderThickness="1" BorderBrush="#E0E0E0">
                                     <StackPanel>
-                                        <TextBlock x:Name="txtLogTitle" Text="Status" FontWeight="Bold" FontSize="12"/>
-                                        <TextBlock x:Name="txtLogMessage" Text="Detalhe..." Foreground="#333" FontSize="11" Margin="0,2,0,5" TextWrapping="Wrap"/>
+                                        <TextBlock x:Name="txtLogTitle" FontWeight="Bold"/>
+                                        <TextBlock x:Name="txtLogMessage" TextWrapping="Wrap"/>
                                         <StackPanel Orientation="Horizontal">
-                                            <TextBlock Text="ID Técnico: " FontSize="9" Foreground="Gray"/>
-                                            <TextBlock x:Name="txtLogCode" Text="000" FontSize="9" Foreground="Gray" Margin="0,0,10,0"/>
-                                            <TextBlock Text="UID: " FontSize="9" Foreground="Gray"/>
-                                            <TextBlock x:Name="txtLogUID" Text="..." FontSize="9" Foreground="Gray"/>
+                                            <TextBlock Text="ID Técnico: "/>
+                                            <TextBlock x:Name="txtLogCode" Margin="0,0,10,0"/>
+                                            <TextBlock Text="UID: "/>
+                                            <TextBlock x:Name="txtLogUID"/>
                                         </StackPanel>
                                     </StackPanel>
                                 </Border>
                             </Grid>
                         </StackPanel>
                     </Border>
-                </StackPanel>
 
-                <Border Grid.Row="1" Style="{StaticResource CardStyle}" Margin="20,5,20,20" Padding="0">
-                    <Grid Margin="12">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="*"/>
-                        </Grid.RowDefinitions>
+                    <Border Style="{StaticResource CardStyle}" Margin="0,10,0,0" Padding="0" MinHeight="450">
+                        <Grid Margin="15">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Text="Gerenciador do Estudo" Style="{StaticResource SectionTitle}"/>
 
-                        <TextBlock Text="Gerenciador do Estudo" Style="{StaticResource SectionTitle}"/>
-
-                        <TabControl Grid.Row="1" Background="Transparent" BorderThickness="0" Padding="0">
-                            <TabItem Header=" 👤 Dados do Paciente ">
-                                <Grid Margin="0,10,0,0">
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="*"/>
-                                    </Grid.RowDefinitions>
-
-                                    <Border Background="#F9FAFB" Padding="10" CornerRadius="6" BorderThickness="1" BorderBrush="#F3F4F6">
+                            <TabControl Grid.Row="1" Background="Transparent" BorderThickness="0">
+                                <TabControl.Template>
+                                    <ControlTemplate TargetType="TabControl">
                                         <Grid>
-                                            <TextBlock Text="Informações Atuais" VerticalAlignment="Center" FontSize="14" FontWeight="Bold" Foreground="#374151"/>
-                                            <Button x:Name="btnEditData" Content="DATAMAKER" HorizontalAlignment="Right" Width="110" Height="30" 
-                                                    Background="#9C27B0" Foreground="White" FontWeight="Bold" Click="btnEditData_Click"/>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="*"/>
+                                            </Grid.RowDefinitions>
+                                            <UniformGrid Grid.Row="0" Rows="1" IsItemsHost="True"/>
+                                            <ContentPresenter Grid.Row="1" ContentSource="SelectedContent"/>
                                         </Grid>
-                                    </Border>
+                                    </ControlTemplate>
+                                </TabControl.Template>
 
-                                    <Grid Grid.Row="1" Margin="0,15,0,0">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="20"/>
-                                            <ColumnDefinition Width="*"/>
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel Grid.Column="0">
-                                            <Label Content="Nome do Paciente"/>
-                                            <TextBox x:Name="txtPatientName" IsReadOnly="True" Background="#F5F5F5"/>
-                                            <Label Content="Prontuário (ID)"/>
-                                            <TextBox x:Name="txtPatientID" IsReadOnly="True" Background="#F5F5F5"/>
-                                            <Label Content="Accession Number"/>
-                                            <TextBox x:Name="txtAccessionNumber" IsReadOnly="True" Background="#F5F5F5"/>
+                                <TabItem Header="👤 Dados do Paciente">
+                                    <StackPanel Margin="10">
+                                        <Border Style="{StaticResource CardStyle}" Padding="15" Margin="0,0,0,15">
+                                            <Grid>
+                                                <TextBlock Text="Detalhes do Estudo" FontWeight="Bold" FontSize="18"/>
+                                                <Button x:Name="btnEditData" Content="DATAMAKER" HorizontalAlignment="Right" Width="120" Height="35" Background="#9C27B0" Foreground="White" Click="btnEditData_Click"/>
+                                            </Grid>
+                                        </Border>
+                                        <Border Style="{StaticResource CardStyle}" Padding="20">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="20"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0">
+                                                    <Label Content="Nome do Paciente"/>
+                                                    <TextBox x:Name="txtPatientName" IsReadOnly="True" Background="#F5F5F5"/>
+                                                    <Label Content="Prontuário (ID)"/>
+                                                    <TextBox x:Name="txtPatientID" IsReadOnly="True" Background="#F5F5F5"/>
+                                                    <Label Content="Accession Number"/>
+                                                    <TextBox x:Name="txtAccessionNumber" IsReadOnly="True" Background="#F5F5F5"/>
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="2">
+                                                    <Label Content="Data de Nascimento"/>
+                                                    <TextBox x:Name="txtBirthDate" IsReadOnly="True" Background="#F5F5F5"/>
+                                                    <Label Content="Data do Estudo"/>
+                                                    <TextBox x:Name="txtStudyDate" IsReadOnly="True" Background="#F5F5F5"/>
+                                                    <Label Content="Descrição do Estudo"/>
+                                                    <TextBox x:Name="txtStudyDescription" IsReadOnly="True" Background="#F5F5F5"/>
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                    </StackPanel>
+                                </TabItem>
+
+                                <TabItem Header="📷 Imagens">
+                                    <Grid Margin="10">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="250"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+
+                                        <StackPanel Grid.Row="0">
+                                            <Label Content="Diretório DICOM (DICOM DIR)"/>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="150"/>
+                                                    <ColumnDefinition Width="110"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBox x:Name="txtFolderPath" Grid.Column="0" IsReadOnly="True" Margin="0,0,10,0"/>
+                                                <Button x:Name="btnSelectFolder" Grid.Column="1" Content="📂 Importar Estudo" Click="btnSelectFolder_Click" Width="140" Height="35" Background="#9C27B0" Foreground="White" FontWeight="Bold" HorizontalAlignment="Right"/>
+                                                <Button x:Name="btnLoadImages" Grid.Column="2" Content="🔍 Localizar" Click="btnLoadImages_Click" Width="100" Height="35" Background="#7B1FA2" Foreground="White" FontWeight="Bold" IsEnabled="False" HorizontalAlignment="Right"/>
+                                            </Grid>
                                         </StackPanel>
-                                        <StackPanel Grid.Column="2">
-                                            <Label Content="Data de Nascimento"/>
-                                            <TextBox x:Name="txtBirthDate" IsReadOnly="True" Background="#F5F5F5"/>
-                                            <Label Content="Data do Estudo"/>
-                                            <TextBox x:Name="txtStudyDate" IsReadOnly="True" Background="#F5F5F5"/>
-                                            <Label Content="Descrição do Estudo"/>
-                                            <TextBox x:Name="txtStudyDescription" IsReadOnly="True" Background="#F5F5F5"/>
-                                        </StackPanel>
-                                    </Grid>
-                                </Grid>
-                            </TabItem>
 
-                            <TabItem Header=" 📷 Imagens ">
-                                <Grid Margin="0,10,0,0">
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="*"/>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                    </Grid.RowDefinitions>
+                                        <Grid Grid.Row="1" Margin="0,5">
+                                            <TextBlock x:Name="lblStatusImages" Text="Aguardando..." FontSize="11"/>
+                                            <ProgressBar x:Name="pbImagesLoading" Width="300" Height="12" HorizontalAlignment="Right" Visibility="Collapsed"/>
+                                        </Grid>
 
-                                    <Grid Grid.Row="0">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <TextBox x:Name="txtFolderPath" IsReadOnly="True" Text="Selecione a pasta..." Margin="0,0,8,0" TextChanged="txtFolderPath_TextChanged"/>
-                                        <Button x:Name="btnSelectFolder" Grid.Column="1" Content="📂 Abrir" Width="80" Height="30" Margin="0,0,5,0" Click="btnSelectFolder_Click"/>
-                                        <Button x:Name="btnLoadImages" Grid.Column="2" Content="🔍 Ler" Width="80" Height="30" IsEnabled="False" Click="btnLoadImages_Click"/>
-                                    </Grid>
-
-                                    <Grid Grid.Row="1" Margin="0,5">
-                                        <TextBlock x:Name="lblStatusImages" Text="Aguardando..." FontSize="11" Foreground="Gray"/>
-                                        <ProgressBar x:Name="pbImagesLoading" Width="200" Height="6" HorizontalAlignment="Right" Visibility="Collapsed"/>
-                                    </Grid>
-
-                                    <TabControl Grid.Row="2" Margin="0,5" BorderThickness="1" BorderBrush="#EEE">
-                                        <TabItem Header="Lista de Arquivos">
-                                            <ListBox x:Name="lstImages" BorderThickness="0" SelectionMode="Extended">
-                                                <ListBox.ItemTemplate>
-                                                    <DataTemplate>
-                                                        <StackPanel Orientation="Horizontal" Margin="2">
-                                                            <CheckBox IsChecked="{Binding IsSelected}" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                                                            <TextBlock Text="{Binding FullPath}" FontSize="11" Foreground="#333"/>
-                                                        </StackPanel>
-                                                    </DataTemplate>
-                                                </ListBox.ItemTemplate>
-                                            </ListBox>
-                                        </TabItem>
-                                        <TabItem Header="Agrupar por Séries">
-                                            <ListBox x:Name="lstSeries" BorderThickness="0">
-                                                <ListBox.ItemTemplate>
-                                                    <DataTemplate>
-                                                        <StackPanel Margin="5">
-                                                            <StackPanel Orientation="Horizontal">
-                                                                <CheckBox IsChecked="{Binding IsSelected}" Margin="0,0,8,0"/>
-                                                                <TextBlock Text="{Binding SeriesDescription}" FontWeight="Bold" Foreground="#007ACC"/>
-                                                                <TextBlock Text=" | " Foreground="Gray"/>
-                                                                <TextBlock Text="{Binding ImageCount}" FontSize="10" VerticalAlignment="Center"/>
+                                        <TabControl Grid.Row="2" Margin="0,0,0,10">
+                                            <TabItem Header="Lista">
+                                                <ListBox x:Name="lstImages" BorderThickness="1">
+                                                    <ListBox.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <StackPanel Orientation="Horizontal" Margin="2">
+                                                                <CheckBox IsChecked="{Binding IsSelected}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                                <TextBlock Text="{Binding FullPath}" FontSize="11"/>
                                                             </StackPanel>
-                                                        </StackPanel>
-                                                    </DataTemplate>
-                                                </ListBox.ItemTemplate>
-                                            </ListBox>
-                                        </TabItem>
-                                    </TabControl>
+                                                        </DataTemplate>
+                                                    </ListBox.ItemTemplate>
+                                                </ListBox>
+                                            </TabItem>
+                                            <TabItem Header="Séries">
+                                                <ListBox x:Name="lstSeries" BorderThickness="1">
+                                                    <ListBox.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <StackPanel Margin="5">
+                                                                <StackPanel Orientation="Horizontal">
+                                                                    <CheckBox IsChecked="{Binding IsSelected}" Margin="0,0,8,0"/>
+                                                                    <TextBlock Text="{Binding SeriesDescription}" FontWeight="Bold" Foreground="#007ACC"/>
+                                                                    <TextBlock Text=" | "/>
+                                                                    <TextBlock Text="{Binding ImageCountInfo}"/>
+                                                                </StackPanel>
+                                                            </StackPanel>
+                                                        </DataTemplate>
+                                                    </ListBox.ItemTemplate>
+                                                </ListBox>
+                                            </TabItem>
+                                        </TabControl>
 
-                                    <UniformGrid Grid.Row="3" Columns="2" Margin="0,5">
-                                        <Border Background="#E8F5E9" Padding="8" CornerRadius="4" Margin="0,0,5,0">
-                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                                <TextBlock Text="✅ " Foreground="#2E7D32"/>
-                                                <TextBlock x:Name="lblSucessoCount" Text="0"/>
-                                                <TextBlock Text=" / "/>
-                                                <TextBlock x:Name="lblTotalSucesso" Text="0" Foreground="Green"/>
-                                            </StackPanel>
-                                        </Border>
-                                        <Border Background="#FFEBEE" Padding="8" CornerRadius="4">
-                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                                <TextBlock Text="❌ " Foreground="#C62828"/>
-                                                <TextBlock x:Name="lblErroCount" Text="0"/>
-                                                <TextBlock Text=" / "/>
-                                                <TextBlock x:Name="lblTotalErro" Text="0" Foreground="#C62828"/>
-                                            </StackPanel>
-                                        </Border>
-                                    </UniformGrid>
-
-                                    <Button x:Name="btnSend" Grid.Row="4" Content="ENVIAR SELECIONADOS PARA PACS" Style="{StaticResource PrimaryButton}" Click="btnSend_Click" Margin="0,5,0,0"/>
-                                </Grid>
-                            </TabItem>
-
-                            <TabItem Header=" ⚠️ Logs de Erro ">
-                                <ListBox x:Name="lstErrorLogs" BorderThickness="0" HorizontalContentAlignment="Stretch" Margin="0,10,0,0">
-                                    <ListBox.ItemTemplate>
-                                        <DataTemplate>
-                                            <Border Background="#FFF5F5" BorderBrush="#FFCDD2" BorderThickness="1" CornerRadius="4" Padding="10" Margin="0,0,0,5">
-                                                <Grid>
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="Auto"/>
-                                                        <ColumnDefinition Width="*"/>
-                                                    </Grid.ColumnDefinitions>
-                                                    <TextBlock Text="⚠️" FontSize="18" Margin="0,0,10,0" VerticalAlignment="Center"/>
-                                                    <StackPanel Grid.Column="1">
-                                                        <TextBlock Text="{Binding Description}" FontWeight="Bold" Foreground="#B71C1C"/>
-                                                        <TextBlock Text="{Binding ProbableCause}" Foreground="#333" FontSize="11" TextWrapping="Wrap"/>
-                                                        <TextBlock Text="{Binding Time}" FontSize="10" Foreground="Gray" HorizontalAlignment="Right"/>
-                                                    </StackPanel>
-                                                </Grid>
+                                        <UniformGrid Grid.Row="3" Columns="2" Margin="0,0,0,10">
+                                            <Border Background="#E8F5E9" BorderBrush="#4CAF50" BorderThickness="1" CornerRadius="6" Padding="10,8" Margin="5,0">
+                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                                    <TextBlock Text="✅ SUCESSO: " Foreground="#2E7D32" FontWeight="Bold"/>
+                                                    <TextBlock x:Name="lblSucessoCount" Text="0" FontWeight="Bold"/>
+                                                    <TextBlock Text=" / "/>
+                                                    <TextBlock x:Name="lblTotalSucesso" Text="0" FontWeight="Bold"/>
+                                                </StackPanel>
                                             </Border>
-                                        </DataTemplate>
-                                    </ListBox.ItemTemplate>
-                                </ListBox>
-                            </TabItem>
-                        </TabControl>
-                    </Grid>
-                </Border>
-            </Grid>
+                                            <Border Background="#FFEBEE" BorderBrush="#F44336" BorderThickness="1" CornerRadius="6" Padding="10,8" Margin="5,0">
+                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                                    <TextBlock Text="❌ FALHA: " Foreground="#C62828" FontWeight="Bold"/>
+                                                    <TextBlock x:Name="lblErroCount" Text="0" FontWeight="Bold"/>
+                                                    <TextBlock Text=" / "/>
+                                                    <TextBlock x:Name="lblTotalErro" Text="0" FontWeight="Bold"/>
+                                                </StackPanel>
+                                            </Border>
+                                        </UniformGrid>
 
-            <Border Grid.Row="2" Background="#EEE" BorderThickness="0,1,0,0" BorderBrush="#DDD" CornerRadius="0,0,8,8">
+                                        <Button x:Name="btnSend" Grid.Row="4" Content="ENVIAR PARA PACS" Style="{StaticResource PrimaryButton}" Click="btnSend_Click"/>
+                                    </Grid>
+                                </TabItem>
+
+                                <TabItem Header="⚠️ Logs de Erro">
+                                    <Border Background="White" BorderBrush="#E5E7EB" BorderThickness="1" CornerRadius="6" Margin="10" MinHeight="300">
+                                        <ListBox x:Name="lstErrorLogs" BorderThickness="0" HorizontalContentAlignment="Stretch">
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Background="#FFF5F5" BorderBrush="#FFCDD2" BorderThickness="1" CornerRadius="4" Padding="10" Margin="5">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                                <ColumnDefinition Width="*"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            <TextBlock Text="⚠️" FontSize="20" Margin="0,0,10,0"/>
+                                                            <StackPanel Grid.Column="1">
+                                                                <TextBlock Text="{Binding Description}" FontWeight="Bold" Foreground="#B71C1C"/>
+                                                                <TextBlock Text="{Binding ProbableCause}" TextWrapping="Wrap"/>
+                                                                <StackPanel Orientation="Horizontal">
+                                                                    <TextBlock Text="ID: "/>
+                                                                    <TextBlock Text="{Binding ErrorCode}" Margin="0,0,10,0"/>
+                                                                    <TextBlock Text="UID: "/>
+                                                                    <TextBlock Text="{Binding InstanceUID}"/>
+                                                                </StackPanel>
+                                                            </StackPanel>
+                                                        </Grid>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+                                    </Border>
+                                </TabItem>
+                            </TabControl>
+                        </Grid>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <Border Grid.Row="2" Background="#E0E0E0" CornerRadius="0,0,8,8">
                 <Grid Margin="15,0">
-                    <TextBlock x:Name="txtStatus" Text="Pronto" VerticalAlignment="Center" FontSize="11" Foreground="#666"/>
-                    <TextBlock Text="v1.1" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="10" Foreground="#999"/>
+                    <TextBlock x:Name="txtStatus" Text="Pronto" VerticalAlignment="Center"/>
+                    <TextBlock Text="v1.1" HorizontalAlignment="Right" VerticalAlignment="Center" Foreground="#888"/>
                 </Grid>
             </Border>
         </Grid>

@@ -25,7 +25,13 @@ namespace DicomSync
         {
             InitializeComponent();
             lstErrorLogs.ItemsSource = _errorList;
-        }
+            // DINAMISMO DE TELA:
+    // Define o tamanho da janela como 85% da altura da tela de trabalho do usuário
+    this.Height = SystemParameters.WorkArea.Height * 0.85;
+    this.Width = SystemParameters.WorkArea.Width * 0.70; // 70% da largura
+}
+        
+
 
         #region LÓGICA DA JANELA (UI)
         private void TitleBar_MouseDown(object sender, MouseButtonEventArgs e)
