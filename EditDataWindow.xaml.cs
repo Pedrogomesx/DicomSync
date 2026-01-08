@@ -7,13 +7,16 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using DicomSync.Helpers; // Garanta que o namespace do DicomFormatter está correto
+using DicomSync.Helpers; // Garante que o namespace do DicomFormatter está correto
 
 namespace DicomSync
 {
     public partial class EditDataWindow : Window
     {
         private List<DicomFile> _filesToEdit;
+
+        // PROPRIEDADE NOVA: Avisa a MainWindow se o usuário quer enviar automaticamente após salvar
+        public bool AutoSendRequested { get; private set; } = false;
 
         public EditDataWindow(List<DicomFile> files)
         {
@@ -30,7 +33,7 @@ namespace DicomSync
                 txtEditAccession.Text = dataset.GetSingleValueOrDefault(DicomTag.AccessionNumber, string.Empty);
                 txtEditDesc.Text = dataset.GetSingleValueOrDefault(DicomTag.StudyDescription, string.Empty);
 
-                // --- AJUSTE AQUI: Formatar data DICOM para Brasileira ao carregar ---
+                // Formatar data DICOM para Brasileira ao carregar
                 string rawBirth = dataset.GetSingleValueOrDefault(DicomTag.PatientBirthDate, string.Empty);
                 string rawDate = dataset.GetSingleValueOrDefault(DicomTag.StudyDate, string.Empty);
 
@@ -51,41 +54,69 @@ namespace DicomSync
             this.Close();
         }
 
+        // =========================================================================================
+        // AÇÕES DOS BOTÕES (SALVAR vs SALVAR E ENVIAR)
+        // =========================================================================================
+
         private async void btnSave_Click(object sender, RoutedEventArgs e)
         {
+            // Apenas salva e fecha
+            if (await SaveDataAsync())
+            {
+                DialogResult = true;
+                Close();
+            }
+        }
+
+        private async void btnSaveAndSend_Click(object sender, RoutedEventArgs e)
+        {
+            // Salva e avisa a MainWindow para enviar
+            if (await SaveDataAsync())
+            {
+                AutoSendRequested = true; // Ativa a flag de envio automático
+                DialogResult = true;
+                Close();
+            }
+        }
+
+        // =========================================================================================
+        // LÓGICA DE SALVAMENTO (REUTILIZÁVEL)
+        // =========================================================================================
+
+        private async Task<bool> SaveDataAsync()
+        {
+            // Desabilita botões para evitar clique duplo
             btnSave.IsEnabled = false;
+            btnSaveAndSend.IsEnabled = false;
             btnCancel.IsEnabled = false;
             pnlProgress.Visibility = Visibility.Visible;
 
             try
             {
-                // Capturamos os valores da UI (Datas estão em dd/mm/yyyy)
+                // Captura valores da UI
                 string pName = txtEditName.Text;
                 string pID = txtEditID.Text;
                 string pAcc = txtEditAccession.Text;
                 string pDesc = txtEditDesc.Text;
 
-                // --- AJUSTE AQUI: Converter datas brasileiras de volta para padrão DICOM (yyyyMMdd) ---
+                // Converte datas brasileiras de volta para padrão DICOM (yyyyMMdd)
                 string pBirthDicom = DicomFormatter.ToDicomDate(txtEditBirth.Text);
                 string pDateDicom = DicomFormatter.ToDicomDate(txtEditDate.Text);
 
+                bool isAnon = btnAnonimizar.IsChecked ?? false;
+
                 await Task.Run(() =>
                 {
-                    
                     string studyFolder = Path.GetDirectoryName(_filesToEdit[0].File.Name);
-                    
-                    // 1. Pegamos a pasta pai (C:\Users\pedro\Downloads\STD)
+
+                    // Lógica de Backup (Cria pasta _bkp se não existir)
                     string parentFolder = Path.GetDirectoryName(studyFolder);
-
-                    // 2 e 3 Pegamos apenas o nome da pasta atual (ID_21021994) e combinamos o path + bkp
                     string folderName = Path.GetFileName(studyFolder) + "_bkp";
-
-                    // 4. Combinamos com a pasta pai para o caminho completo
                     var backupFolderPath = Path.Combine(parentFolder, folderName);
 
-                    // 5. Criamos o diretório
                     if (!Directory.Exists(backupFolderPath))
                         Directory.CreateDirectory(backupFolderPath);
+
                     Dispatcher.Invoke(() =>
                     {
                         pbBackup.Maximum = _filesToEdit.Count;
@@ -101,10 +132,7 @@ namespace DicomSync
                         Dispatcher.Invoke(() => pbBackup.Value++);
                     }
 
-                    // FASE 2: ATUALIZAÇÃO / ANONIMIZAÇÃO
-                    bool isAnon = false;
-                    Dispatcher.Invoke(() => isAnon = btnAnonimizar.IsChecked ?? false);
-
+                    // FASE 2: ATUALIZAÇÃO DOS ARQUIVOS
                     int count = 0;
                     foreach (var file in _filesToEdit)
                     {
@@ -124,27 +152,30 @@ namespace DicomSync
                             file.Dataset.AddOrUpdate(DicomTag.PatientName, pName);
                             file.Dataset.AddOrUpdate(DicomTag.PatientID, pID);
                             file.Dataset.AddOrUpdate(DicomTag.AccessionNumber, pAcc);
-                            file.Dataset.AddOrUpdate(DicomTag.PatientBirthDate, pBirthDicom); // Grava yyyyMMdd
-                            file.Dataset.AddOrUpdate(DicomTag.StudyDate, pDateDicom);       // Grava yyyyMMdd
+                            file.Dataset.AddOrUpdate(DicomTag.PatientBirthDate, pBirthDicom);
+                            file.Dataset.AddOrUpdate(DicomTag.StudyDate, pDateDicom);
                             file.Dataset.AddOrUpdate(DicomTag.StudyDescription, pDesc);
                         }
 
+                        // Salva o arquivo DICOM no disco (sobrescreve o original)
                         file.Save(file.File.Name);
                         count++;
                         Dispatcher.Invoke(() => pbUpdate.Value = count);
                     }
                 });
 
-                MessageBox.Show("Processo concluído com sucesso!", "DicomSync");
-                DialogResult = true;
-                Close();
+                return true; // Sucesso
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Erro: {ex.Message}");
+                MessageBox.Show($"Erro ao salvar: {ex.Message}");
+
+                // Restaura UI em caso de erro
                 pnlProgress.Visibility = Visibility.Collapsed;
                 btnSave.IsEnabled = true;
+                btnSaveAndSend.IsEnabled = true;
                 btnCancel.IsEnabled = true;
+                return false; // Falha
             }
         }
 
@@ -154,22 +185,18 @@ namespace DicomSync
             Close();
         }
 
+        // Lógica de máscara de data (dd/MM/yyyy)
         private void DateTextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
             if (sender is TextBox textBox)
             {
-                // 1. Armazena a posição atual do cursor e o texto antes de limpar
                 int selectionStart = textBox.SelectionStart;
                 int oldLength = textBox.Text.Length;
 
-                // 2. Remove tudo que não é número
                 string digitsOnly = new string(textBox.Text.Where(char.IsDigit).ToArray());
-
-                // Limita a 8 dígitos (DDMMYYYY)
                 if (digitsOnly.Length > 8) digitsOnly = digitsOnly.Substring(0, 8);
 
                 string formatted = "";
-                // 3. Monta a string formatada dd/mm/yyyy
                 if (digitsOnly.Length > 0)
                 {
                     formatted = digitsOnly.Substring(0, Math.Min(digitsOnly.Length, 2));
@@ -183,19 +210,13 @@ namespace DicomSync
                     }
                 }
 
-                // 4. Só atualiza se o texto formatado for diferente do atual
                 if (textBox.Text != formatted)
                 {
                     textBox.Text = formatted;
-
-                    // 5. Cálculo inteligente da posição do cursor
-                    // Se o usuário adicionou um caractere que resultou em uma barra, pula o cursor adiante
                     int newLength = formatted.Length;
                     int diff = newLength - oldLength;
-
                     int newSelectionStart = selectionStart + diff;
 
-                    // Garante que o cursor não saia dos limites do texto
                     if (newSelectionStart < 0) newSelectionStart = 0;
                     if (newSelectionStart > newLength) newSelectionStart = newLength;
 

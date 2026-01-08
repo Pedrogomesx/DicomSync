@@ -3,37 +3,85 @@ using DicomSync.ViewModels;
 using FellowOakDicom;
 using FellowOakDicom.Network;
 using Microsoft.Win32;
+using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Linq; // Necessário para Select e ToList
+using System.Windows.Media.Animation; // IMPORTANTE PARA O MENU RETRÁTIL
 
 namespace DicomSync
 {
     public partial class MainWindow : Window
     {
         private CancellationTokenSource _sendCts;
-        private List<DicomFile> _allDicomFiles = [];
-        private ObservableCollection<DicomErrorViewModel> _errorList = [];
+        private List<DicomFile> _allDicomFiles = new List<DicomFile>();
+        private ObservableCollection<DicomErrorViewModel> _errorList = new ObservableCollection<DicomErrorViewModel>();
+
+        // Variável para controlar o estado do menu lateral
+        private bool _isMenuExpanded = true;
 
         public MainWindow()
         {
             InitializeComponent();
+
+            // Vincula a lista de erros à UI
             lstErrorLogs.ItemsSource = _errorList;
-            // DINAMISMO DE TELA:
-    // Define o tamanho da janela como 85% da altura da tela de trabalho do usuário
-    this.Height = SystemParameters.WorkArea.Height * 0.85;
-    this.Width = SystemParameters.WorkArea.Width * 0.70; // 70% da largura
-}
-        
 
+            // Define o tamanho inicial fixo conforme solicitado
+            this.Width = 950;
+            this.Height = 600;
+        }
 
-        #region LÓGICA DA JANELA (UI)
+        #region MENU LATERAL RETRÁTIL
+        private void btnToggleMenu_Click(object sender, RoutedEventArgs e)
+        {
+            if (_isMenuExpanded)
+            {
+                // AJUSTE: Mudei de 68 para 60 para esconder totalmente o texto
+                AnimateSidebar(200, 60);
+            }
+            else
+            {
+                // Expande de volta para 200
+                AnimateSidebar(60, 200);
+            }
+            _isMenuExpanded = !_isMenuExpanded;
+        }
+
+        private void AnimateSidebar(double from, double to)
+        {
+            DoubleAnimation animation = new DoubleAnimation();
+            animation.From = from;
+            animation.To = to;
+            animation.Duration = new Duration(TimeSpan.FromMilliseconds(300));
+            animation.EasingFunction = new QuarticEase { EasingMode = EasingMode.EaseInOut };
+
+            // SidebarBorder é o nome que demos ao Border do menu no XAML
+            SidebarBorder.BeginAnimation(Border.WidthProperty, animation);
+        }
+
+        private void Nav_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is RadioButton rb && rb.Tag != null)
+            {
+                if (int.TryParse(rb.Tag.ToString(), out int index))
+                {
+                    MainTabs.SelectedIndex = index;
+                    // Reseta a cor do texto caso estivesse vermelho por erro
+                    if (index == 3) rb.Foreground = new SolidColorBrush(Color.FromRgb(75, 85, 99));
+                }
+            }
+        }
+        #endregion
+
+        #region LÓGICA DA JANELA (Barra de Título)
         private void TitleBar_MouseDown(object sender, MouseButtonEventArgs e)
         {
             if (e.ChangedButton == MouseButton.Left)
@@ -58,7 +106,7 @@ namespace DicomSync
             {
                 WindowState = WindowState.Normal;
                 MainBorder.CornerRadius = new CornerRadius(8);
-                MainBorder.Margin = new Thickness(10);
+                MainBorder.Margin = new Thickness(5);
                 btnMaximize.Content = "⬜";
             }
         }
@@ -66,7 +114,7 @@ namespace DicomSync
         private void btnClose_Click(object sender, RoutedEventArgs e) => Application.Current.Shutdown();
         #endregion
 
-        #region GERENCIAMENTO DE ARQUIVOS
+        #region GERENCIAMENTO DE ARQUIVOS (Aba SEND)
         private void btnSelectFolder_Click(object sender, RoutedEventArgs e)
         {
             var dialog = new OpenFileDialog
@@ -88,19 +136,6 @@ namespace DicomSync
 
         private async void btnLoadImages_Click(object sender, RoutedEventArgs e)
         {
-            if (_sendCts != null)
-            {
-                var confirm = MessageBox.Show("Um envio está em curso. Deseja abortar o envio atual para carregar novos arquivos?",
-                    "Abortar Envio", MessageBoxButton.YesNo, MessageBoxImage.Question);
-
-                if (confirm == MessageBoxResult.Yes)
-                {
-                    _sendCts.Cancel();
-                    await Task.Delay(500);
-                }
-                else return;
-            }
-
             string path = txtFolderPath.Text;
             if (string.IsNullOrEmpty(path)) return;
 
@@ -127,11 +162,9 @@ namespace DicomSync
                     FillPatientData(_allDicomFiles[0].Dataset);
                     lstImages.ItemsSource = files.Select(f => Services.DicomService.CreateItemViewModel(f)).ToList();
                     lstSeries.ItemsSource = Services.DicomService.GroupIntoSeries(files);
-                    
-                    // Atualiza os labels de total de arquivos carregados
+
                     lblTotalSucesso.Text = _allDicomFiles.Count.ToString();
-                    lblTotalErro.Text = _allDicomFiles.Count.ToString(); // Ajuste solicitado
-                    
+                    lblTotalErro.Text = _allDicomFiles.Count.ToString();
                     lblStatusImages.Text = "Estudo carregado com sucesso.";
                 }
                 else
@@ -157,52 +190,78 @@ namespace DicomSync
         }
         #endregion
 
-        #region OPERAÇÕES DICOM (ECHO / SEND)
+        #region OPERAÇÕES DICOM (ECHO / SEND / EDIT)
+
+        // Método Echo Atualizado (Visual Verde/Vermelho)
         private async void btnEcho_Click(object sender, RoutedEventArgs e)
         {
-            bdrStatus.Visibility = Visibility.Collapsed;
             if (!int.TryParse(txtPortRemote.Text, out int port))
             {
-                txtLogTitle.Text = "Erro de Validação";
-                txtLogTitle.Foreground = Brushes.DarkRed;
-                txtLogMessage.Text = "A porta informada não é válida. Insira apenas números.";
-                txtLogCode.Text = "VAL-01";
-                txtLogUID.Text = "Local";
-                bdrStatus.Visibility = Visibility.Visible;
+                MessageBox.Show("Porta inválida.");
                 return;
             }
 
             try
             {
                 SetInterfaceElementState(false);
+
+                // ESTADO: TESTANDO (Neutro)
+                txtConnectionStatus.Text = "Testando...";
+                txtPing.Text = "Enviando C-ECHO...";
+                txtStatusIcon.Text = "⏳";
+                bdrIconCircle.Background = new SolidColorBrush(Colors.White);
+                txtStatusIcon.Foreground = new SolidColorBrush(Colors.Orange);
+                bdrServerStatus.Background = new SolidColorBrush(Color.FromRgb(243, 244, 246));
+
                 var result = await Services.DicomService.TestConnectionAsync(
                     txtIpRemote.Text, port, txtAeLocal.Text, txtAeRemote.Text);
 
-                txtLogTitle.Text = result.Sucess ? "Conexão Estabelecida" : "Falha na Conexão";
-                txtLogMessage.Text = result.Message;
-
                 if (result.Sucess)
                 {
-                    txtLogTitle.Foreground = new SolidColorBrush(Color.FromRgb(46, 125, 50));
-                    txtLogCode.Text = "OK-200";
+                    // SUCESSO: Visual VERDE Degradê
+                    var gradient = new LinearGradientBrush();
+                    gradient.StartPoint = new Point(0, 0);
+                    gradient.EndPoint = new Point(1, 1);
+                    gradient.GradientStops.Add(new GradientStop(Color.FromRgb(34, 197, 94), 0.0));
+                    gradient.GradientStops.Add(new GradientStop(Color.FromRgb(22, 163, 74), 1.0));
+                    bdrServerStatus.Background = gradient;
+
+                    txtConnectionStatus.Foreground = Brushes.White;
+                    txtPing.Foreground = new SolidColorBrush(Color.FromArgb(200, 255, 255, 255));
+
+                    txtStatusIcon.Text = "✔";
+                    txtStatusIcon.Foreground = new SolidColorBrush(Color.FromRgb(34, 197, 94));
+
+                    txtConnectionStatus.Text = "Online";
+                    txtPing.Text = string.IsNullOrEmpty(result.Message) ? "Conexão estabelecida." : result.Message;
                 }
                 else
                 {
-                    txtLogTitle.Foreground = new SolidColorBrush(Color.FromRgb(183, 28, 28));
-                    txtLogCode.Text = "ERR-NET";
+                    // FALHA: Visual Vermelho Degradê
+                    var gradient = new LinearGradientBrush();
+                    gradient.StartPoint = new Point(0, 0);
+                    gradient.EndPoint = new Point(1, 1);
+                    gradient.GradientStops.Add(new GradientStop(Color.FromRgb(220, 38, 38), 0.0));
+                    gradient.GradientStops.Add(new GradientStop(Color.FromRgb(185, 28, 28), 1.0));
+                    bdrServerStatus.Background = gradient;
+
+                    txtConnectionStatus.Foreground = Brushes.White;
+                    txtPing.Foreground = new SolidColorBrush(Color.FromArgb(200, 255, 255, 255));
+
+                    txtStatusIcon.Text = "✖";
+                    txtStatusIcon.Foreground = new SolidColorBrush(Color.FromRgb(220, 38, 38));
+
+                    txtConnectionStatus.Text = "Offline";
+                    txtPing.Text = "O servidor não respondeu.";
                 }
 
-                txtLogUID.Text = $"{txtIpRemote.Text}:{port}";
-                bdrStatus.Visibility = Visibility.Visible;
+                txtLogMessage.Text = result.Sucess ? "Echo Success (0000)" : "Echo Failed";
             }
             catch (Exception ex)
             {
-                txtLogTitle.Text = "Erro Crítico do Sistema";
-                txtLogTitle.Foreground = Brushes.Red;
+                txtConnectionStatus.Text = "Erro";
                 txtLogMessage.Text = ex.Message;
-                txtLogCode.Text = "EX-500";
-                txtLogUID.Text = "System Exception";
-                bdrStatus.Visibility = Visibility.Visible;
+                bdrServerStatus.Background = new SolidColorBrush(Color.FromRgb(185, 28, 28));
             }
             finally
             {
@@ -212,8 +271,7 @@ namespace DicomSync
 
         private async void btnSend_Click(object sender, RoutedEventArgs e)
         {
-            if (_allDicomFiles.Count == 0) return;
-            if (!int.TryParse(txtPortRemote.Text, out int port)) return;
+            if (_allDicomFiles.Count == 0 || !int.TryParse(txtPortRemote.Text, out int port)) return;
 
             SetInterfaceElementState(false);
             _sendCts = new CancellationTokenSource();
@@ -222,129 +280,93 @@ namespace DicomSync
             int successCount = 0;
             int errorCount = 0;
 
-            pbImagesLoading.Maximum = _allDicomFiles.Count;
-            pbImagesLoading.Value = 0;
-            pbImagesLoading.Visibility = Visibility.Visible;
-
-            // Define os totais máximos nos labels antes de começar
             lblTotalSucesso.Text = _allDicomFiles.Count.ToString();
             lblTotalErro.Text = _allDicomFiles.Count.ToString();
 
             try
             {
                 await Services.DicomService.ExecuteSendAsync(
-                    _allDicomFiles,
-                    txtIpRemote.Text,
-                    port,
-                    txtAeLocal.Text,
-                    txtAeRemote.Text,
+                    _allDicomFiles, txtIpRemote.Text, port, txtAeLocal.Text, txtAeRemote.Text,
                     (status, file) =>
                     {
-                        if (_sendCts != null && _sendCts.IsCancellationRequested) return;
-
                         Dispatcher.Invoke(() =>
                         {
-                            if (_sendCts == null || _sendCts.IsCancellationRequested) return;
-
-                            if (status == DicomStatus.Success)
-                            {
-                                successCount++;
-                            }
+                            if (status == DicomStatus.Success) successCount++;
                             else
                             {
                                 errorCount++;
                                 _errorList.Insert(0, new DicomErrorViewModel
                                 {
-                                    InstanceUID = file.Dataset.GetSingleValueOrDefault(DicomTag.SOPInstanceUID, "N/A"),
-                                    ErrorCode = $"0x{status.Code:X4}H",
                                     Description = status.ToString(),
+                                    ErrorCode = status.Code.ToString("X4"),
+                                    InstanceUID = file.Dataset.GetSingleValueOrDefault(DicomTag.SOPInstanceUID, "N/A"),
                                     ProbableCause = Services.DicomService.GetFriendlyError(status),
                                     Time = DateTime.Now.ToString("HH:mm:ss")
                                 });
-                            }
 
-                            pbImagesLoading.Value++;
+                                // Notificação visual de erro na aba de logs
+                                rbLogs.Foreground = Brushes.Red;
+                            }
                             lblSucessoCount.Text = successCount.ToString();
                             lblErroCount.Text = errorCount.ToString();
                         });
-                    },
-                    _sendCts.Token);
+                    }, _sendCts.Token);
 
-                if (!_sendCts.IsCancellationRequested)
-                {
-                    MessageBox.Show($"Envio Finalizado!\nSucessos: {successCount}\nFalhas: {errorCount}", "DicomSync");
-                }
-                else
-                {
-                    lblStatusImages.Text = "Envio cancelado pelo usuário.";
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Erro crítico no envio: " + ex.Message);
+                MessageBox.Show("Operação de envio finalizada.");
             }
             finally
             {
                 SetInterfaceElementState(true);
-                _sendCts?.Dispose();
-                _sendCts = null;
-                pbImagesLoading.Visibility = Visibility.Collapsed;
             }
         }
-        #endregion
 
-        #region EVENTOS DE INTERFACE
+        // Método para o botão "Editar Dados" na aba SEND
+        private void btnGoToEdit_Click(object sender, RoutedEventArgs e)
+        {
+            if (_allDicomFiles == null || _allDicomFiles.Count == 0)
+            {
+                MessageBox.Show("Importe um estudo primeiro.");
+                return;
+            }
+            rbData.IsChecked = true;
+            MainTabs.SelectedIndex = 2;
+            btnEditData_Click(sender, e);
+        }
+
+        // Método para o botão roxo "DATAMAKER"
         private void btnEditData_Click(object sender, RoutedEventArgs e)
         {
-            if (_allDicomFiles.Count == 0) return;
+            if (_allDicomFiles == null || _allDicomFiles.Count == 0) return;
 
             var editWindow = new EditDataWindow(_allDicomFiles);
+
             if (editWindow.ShowDialog() == true)
             {
                 FillPatientData(_allDicomFiles[0].Dataset);
+
+                // Lógica "Salvar e Enviar"
+                if (editWindow.AutoSendRequested)
+                {
+                    rbSend.IsChecked = true;
+                    MainTabs.SelectedIndex = 1;
+
+                    Dispatcher.InvokeAsync(async () =>
+                    {
+                        await Task.Delay(300);
+                        btnSend_Click(sender, e);
+                    });
+                }
             }
         }
+        #endregion
 
         private void SetInterfaceElementState(bool isEnabled)
         {
             btnSend.IsEnabled = isEnabled;
             btnEcho.IsEnabled = isEnabled;
-            btnEditData.IsEnabled = isEnabled;
             btnLoadImages.IsEnabled = isEnabled;
             btnSelectFolder.IsEnabled = isEnabled;
             this.Cursor = isEnabled ? Cursors.Arrow : Cursors.Wait;
         }
-
-        private void DateTextBox_TextChanged(object sender, TextChangedEventArgs e)
-        {
-            if (sender is TextBox textBox)
-            {
-                int selectionStart = textBox.SelectionStart;
-                int oldLength = textBox.Text.Length;
-                string digitsOnly = new string(textBox.Text.Where(char.IsDigit).ToArray());
-                if (digitsOnly.Length > 8) digitsOnly = digitsOnly.Substring(0, 8);
-                string formatted = "";
-                if (digitsOnly.Length > 0)
-                {
-                    formatted = digitsOnly.Substring(0, Math.Min(digitsOnly.Length, 2));
-                    if (digitsOnly.Length > 2)
-                    {
-                        formatted += "/" + digitsOnly.Substring(2, Math.Min(digitsOnly.Length - 2, 2));
-                        if (digitsOnly.Length > 4)
-                            formatted += "/" + digitsOnly.Substring(4, Math.Min(digitsOnly.Length - 4, 4));
-                    }
-                }
-                if (textBox.Text != formatted)
-                {
-                    textBox.Text = formatted;
-                    int newSelectionStart = selectionStart + (formatted.Length - oldLength);
-                    textBox.SelectionStart = Math.Max(0, Math.Min(formatted.Length, newSelectionStart));
-                }
-            }
-        }
-        #endregion
-
-        private void lstErrorLogs_SelectionChanged(object sender, SelectionChangedEventArgs e) { }
-        private void txtFolderPath_TextChanged(object sender, TextChangedEventArgs e) { }
     }
 }
