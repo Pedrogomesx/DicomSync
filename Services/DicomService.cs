@@ -11,7 +11,7 @@ namespace DicomSync.Services
     {
         public class DicomOperationResult
         {
-            public bool Sucess { get; set; }
+            public bool Success { get; set; }
             public string Message { get; set; }
         }
 
@@ -26,7 +26,7 @@ namespace DicomSync.Services
                     var connectTask = tcpClient.ConnectAsync(ip, port);
                     if (await Task.WhenAny(connectTask, Task.Delay(3000)) != connectTask)
                     {
-                        return new DicomOperationResult { Sucess = false, Message = "Timeout: Porta ou IP inacessível." };
+                        return new DicomOperationResult { Success = false, Message = "Timeout: Porta ou IP inacessível." };
                     }
                 }
 
@@ -45,13 +45,13 @@ namespace DicomSync.Services
 
                 return new DicomOperationResult
                 {
-                    Sucess = echoSuccess,
+                    Success = echoSuccess,
                     Message = echoSuccess ? "Conexão DICOM OK (C-ECHO Sucedido)!" : "Servidor recusou a associação (Verifique AE Titles)."
                 };
             }
             catch (Exception ex)
             {
-                return new DicomOperationResult { Sucess = false, Message = $"Erro técnico: {ex.Message}" };
+                return new DicomOperationResult { Success = false, Message = $"Erro técnico: {ex.Message}" };
             }
         }
 

@@ -3,13 +3,8 @@ using DicomSync.ViewModels;
 using FellowOakDicom;
 using FellowOakDicom.Network;
 using Microsoft.Win32;
-using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -216,7 +211,7 @@ namespace DicomSync
                 var result = await Services.DicomService.TestConnectionAsync(
                     txtIpRemote.Text, port, txtAeLocal.Text, txtAeRemote.Text);
 
-                if (result.Sucess)
+                if (result.Success)
                 {
                     // SUCESSO: Visual VERDE Degradê
                     var gradient = new LinearGradientBrush();
@@ -255,7 +250,7 @@ namespace DicomSync
                     txtPing.Text = "O servidor não respondeu.";
                 }
 
-                txtLogMessage.Text = result.Sucess ? "Echo Success (0000)" : "Echo Failed";
+                txtLogMessage.Text = result.Success ? "Echo Success (0000)" : "Echo Failed";
             }
             catch (Exception ex)
             {

@@ -1,9 +1,5 @@
 ﻿using FellowOakDicom;
-using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq; // Necessário para o .Where e .ToArray
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -53,11 +49,6 @@ namespace DicomSync
             this.DialogResult = false;
             this.Close();
         }
-
-        // =========================================================================================
-        // AÇÕES DOS BOTÕES (SALVAR vs SALVAR E ENVIAR)
-        // =========================================================================================
-
         private async void btnSave_Click(object sender, RoutedEventArgs e)
         {
             // Apenas salva e fecha
@@ -78,10 +69,6 @@ namespace DicomSync
                 Close();
             }
         }
-
-        // =========================================================================================
-        // LÓGICA DE SALVAMENTO (REUTILIZÁVEL)
-        // =========================================================================================
 
         private async Task<bool> SaveDataAsync()
         {

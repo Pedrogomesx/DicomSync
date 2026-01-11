@@ -4,6 +4,7 @@
         Title="DicomSync - Editor e Envio" 
         Height="600" Width="950"
         MinHeight="600" MinWidth="950"
+        Icon="/Resources/logo_dicomsync.png"
         WindowState="Normal" 
         WindowStartupLocation="CenterScreen"
         WindowStyle="None"
@@ -133,7 +134,14 @@
 
                         <Button x:Name="btnToggleMenu" Click="btnToggleMenu_Click" Height="40" Background="Transparent" BorderThickness="0" Cursor="Hand" Margin="0,0,0,10">
                             <Grid Width="200" HorizontalAlignment="Left">
-                                <TextBlock Text="☰" FontSize="20" Foreground="#6B7280" HorizontalAlignment="Left" Margin="23,0,0,0" VerticalAlignment="Center"/>
+                                <Path Data="M3,6H21V8H3V6M3,11H21V13H3V11M3,16H21V18H3V16Z" 
+          Fill="#6B7280" 
+          Stretch="Uniform" 
+          Width="20" 
+          Height="20"
+          Margin="23,0,0,0" 
+          HorizontalAlignment="Left" 
+          VerticalAlignment="Center"/>
                             </Grid>
                         </Button>
 
