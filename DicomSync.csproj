@@ -11,6 +11,9 @@
   <ItemGroup>
     <None Remove="Assets\logo_dicomsync.png" />
     <None Remove="Resources\logo_dicomsync.png" />
+    <Compile Remove="DicomSync.Tests\**" />
+    <EmbeddedResource Remove="DicomSync.Tests\**" />
+    <None Remove="DicomSync.Tests\**" />
   </ItemGroup>
 
   <ItemGroup>
